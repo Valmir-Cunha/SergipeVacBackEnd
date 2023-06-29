@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Npgsql;
 using SergipeVac.Model;
 using SergipeVac.Model.Interface;
 
@@ -117,33 +118,42 @@ namespace SergipeVac.Controllers
         }
 
         [HttpGet("contagemporsexo")]
-        public async Task<JsonResult> ObterVacinadosPorSexoBiologico(DateTime? dataMin = null, DateTime? dataMax = null)
+        public async Task<ObjectResult> ObterVacinadosPorSexoBiologico(DateTime? dataMin = null, DateTime? dataMax = null)
         {
-            dataMin ??= DateTime.MinValue;
-            dataMax ??= DateTime.MaxValue;
+            try
+            {
+                dataMin ??= DateTime.MinValue;
+                dataMax ??= DateTime.MaxValue;
 
-            var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-            var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
+                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
+                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
 
-            var vacinasAplicadaEntreAsDatasInformadas = _repositorio.Obter(p => p.VacinaDataAplicacao >= dataMinUtc && p.VacinaDataAplicacao <= dataMaxUtc);
+                var vacinasAplicadaEntreAsDatasInformadas = _repositorio.Obter(p => p.VacinaDataAplicacao >= dataMinUtc && p.VacinaDataAplicacao <= dataMaxUtc);
 
-            var vacinadosPorSexoBiologico = vacinasAplicadaEntreAsDatasInformadas
-                                                                .GroupBy(d =>
-                                                                    d.PacienteEnumSexoBiologico == "F" ? "Feminino" :
-                                                                    d.PacienteEnumSexoBiologico == "M" ? "Masculino" :
-                                                                    d.PacienteEnumSexoBiologico == "I" ? "Intersexo" :
-                                                                    "Sem informação")
-                                                                .Select(g => new
-                                                                {
-                                                                    SexoBiologico = g.Key,
-                                                                    TotalPacientes = g.Select(d => d.PacienteId)
-                                                                                      .Distinct()
-                                                                                      .Count()
-                                                                })
-                                                                .ToList();
+                var vacinadosPorSexoBiologico = vacinasAplicadaEntreAsDatasInformadas
+                                                        .GroupBy(d =>
+                                                            d.PacienteEnumSexoBiologico == "F" ? "Feminino" :
+                                                            d.PacienteEnumSexoBiologico == "M" ? "Masculino" :
+                                                            d.PacienteEnumSexoBiologico == "I" ? "Intersexo" :
+                                                            "Sem informação")
+                                                        .Select(g => new
+                                                        {
+                                                            SexoBiologico = g.Key,
+                                                            TotalPacientes = g.Select(d => d.PacienteId)
+                                                                              .Distinct()
+                                                                              .Count()
+                                                        })
+                                                        .ToList();
 
-            return Json(vacinadosPorSexoBiologico);
+                return new ObjectResult(Json(vacinadosPorSexoBiologico));
+            }
+            catch (NpgsqlException ex)
+            {
+                Console.WriteLine("Erro Npgsql: " + ex.Message);
+                return StatusCode(500, "Erro ao obter os dados. Por favor, tente novamente mais tarde.");
+            }
         }
+
 
         [HttpGet("contagempordose")]
         public async Task<JsonResult> ObterVacinadosPorDose(DateTime? dataMin = null, DateTime? dataMax = null)
