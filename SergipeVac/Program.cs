@@ -21,11 +21,11 @@ builder.Services.AddSwaggerGen();
 
 var strBuilder = new NpgsqlConnectionStringBuilder()
 {
-    Port = 5432,
-    Host = "database-1.cazvzdkc1qau.us-east-1.rds.amazonaws.com",
+    Port = 6466,
+    Host = "containers-us-west-111.railway.app",
     Username = "postgres",
-    Password = "tZHpqOnI4rUJS2NzeIS4",
-    Database = "sergipevac"
+    Password = "1WXRPIvCHq4AY6xhQr0y",
+    Database = "railway"
 };
 
 
