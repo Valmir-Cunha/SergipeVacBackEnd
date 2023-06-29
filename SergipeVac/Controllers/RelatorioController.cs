@@ -271,5 +271,59 @@ namespace SergipeVac.Controllers
 
             return Json(topGrupos);
         }
+
+        [HttpGet("totalizadores")]
+        public async Task<JsonResult> ObterTotalizadores()
+        {
+            //var vacinasAplicadaEntreAsDatasInformadas = _repositorio.ObterTodos();
+
+            //var quantidadeDePacientesVacinados = vacinasAplicadaEntreAsDatasInformadas
+            //    .Select(d => d.PacienteId)
+            //    .Distinct()
+            //    .Count();
+
+            //var quantidadeDeVacinasAplicadas = vacinasAplicadaEntreAsDatasInformadas.Count();
+
+            //var quantidadeDeEstrangeiros = vacinasAplicadaEntreAsDatasInformadas.Count(p => p.PacienteNacionalidadeEnumNacionalidade == "E");
+
+            //var postoComMaisVacinasAplicadas = vacinasAplicadaEntreAsDatasInformadas
+            //    .GroupBy(d => d.EstabelecimentoNoFantasia)
+            //    .OrderByDescending(g => g.Count())
+            //    .Select(g => new
+            //    {
+            //        Estabelecimento = g.Key,
+            //        Quantidade = g.Count()
+            //    }).FirstOrDefault();
+
+            //var fabricanteComMaisDosesAplicadas = vacinasAplicadaEntreAsDatasInformadas
+            //    .GroupBy(d => d.VacinaFabricanteNome)
+            //    .OrderByDescending(g => g.Count())
+            //    .Select(g => new
+            //    {
+            //        Fabricante = g.Key,
+            //        Quantidade = g.Count()
+            //    }).FirstOrDefault();
+
+            var jsonData = new
+            {
+                quantidadeDePacientesVacinados = 663953,
+                quantidadeDeVacinasAplicadas = 1908456,
+                quantidadeDeEstrangeiros = 8554,
+                postoComMaisVacinasAplicadas = new
+                {
+                    estabelecimento = "US ONESIMO PINTO FILHO JARDIM CENTENARIO",
+                    quantidade = 388961
+                },
+                fabricanteComMaisDosesAplicadas = new
+                {
+                    fabricante = "PFIZER",
+                    quantidade = 902040
+                }
+            };
+
+            return new JsonResult(jsonData);
+
+        }
+
     }
 }
