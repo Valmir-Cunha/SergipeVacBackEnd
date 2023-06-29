@@ -1,0 +1,10 @@
+# Arquivos temporários
+obj/
+bin/
+
+# Arquivos de publicação
+Publish/
+
+# Arquivos gerados pelo Visual Studio
+.vs/
+*.suo
