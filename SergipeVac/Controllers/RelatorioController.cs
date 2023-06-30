@@ -309,11 +309,7 @@ namespace SergipeVac.Controllers
                 quantidadeDePacientesVacinados = 663953,
                 quantidadeDeVacinasAplicadas = 1908456,
                 quantidadeDeEstrangeiros = 8554,
-                postoComMaisVacinasAplicadas = new
-                {
-                    estabelecimento = "US ONESIMO PINTO FILHO JARDIM CENTENARIO",
-                    quantidade = 388961
-                },
+                numEstabelecimentos = 241,
                 fabricanteComMaisDosesAplicadas = new
                 {
                     fabricante = "PFIZER",
