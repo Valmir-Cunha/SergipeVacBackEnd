@@ -8,5 +8,7 @@ namespace SergipeVac.Model.Interface
         void Adicionar(T entidade);
         void AdicionarConjunto(List<T> entidades);
         IQueryable<T> Obter(Expression<Func<T, bool>> expressao);
+        int QuantidadeDe(Expression<Func<T, bool>> expressao);
+        int QuantidadeTotal();
     }
 }

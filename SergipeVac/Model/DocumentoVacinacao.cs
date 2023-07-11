@@ -19,7 +19,6 @@
 
         public Fabricante Fabricante { get; set; }
 
-
         public Paciente Paciente { get; set; }
         public Estabelecimento Estabelecimento { get; set; }
         public Sistema SistemaOrigem { get; set; }

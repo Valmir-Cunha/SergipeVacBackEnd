@@ -35,6 +35,16 @@ namespace SergipeVac.Infra.Repositorios
             return _contexto.Set<T>().Where(expressao).AsQueryable<T>();
         }
 
+        public int QuantidadeDe(Expression<Func<T, bool>> expressao)
+        {
+            return _contexto.Set<T>().Where(expressao).Count();
+        }
+
+        public int QuantidadeTotal()
+        {
+            return _contexto.Set<T>().Count();
+        }
+
         public void Dispose()
         {
             _contexto.Dispose();

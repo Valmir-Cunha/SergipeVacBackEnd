@@ -59,10 +59,12 @@ namespace SergipeVac.Conversores
             bool consultaConcluida = false;
             List<DocumentoImportadoCSV> documentosImportador = null;
             List<DocumentoVacinacao> documenetVacinacaos = new List<DocumentoVacinacao>();
+            List<DocumentoImportadoCSV> categoriasDistintas = new List<DocumentoImportadoCSV>();
 
             Thread consultaThread = new Thread(() =>
             {
-                documentosImportador = _documentoImportadoRepositorio.ObterTodos().ToList();
+                documentosImportador = _documentoImportadoRepositorio.Obter(p => p.EstabelecimentoMunicipioCodigo == 280030).ToList();
+                //categoriasDistintas = documentosImportador.DistinctBy(p => p.EstabelecimentoNoFantasia).ToList();
                 consultaConcluida = true;
             });
 
@@ -75,128 +77,74 @@ namespace SergipeVac.Conversores
 
             int contador = 0;
 
-            enderecosAdicionadas = _enderecoRepositorio.ObterTodos().ToList();
+            pacientesCadastrados = _pacienteRepositorio.ObterTodos().ToList();
+            estabelecimentosAdicionadas = _estabelecimentoRepositorio.ObterTodos().ToList();
+            sistemasCadastrados = _sistemaRepositorio.ObterTodos().ToList();
+            grupoAtendimentosCadastrados = _grupoAtendimentoRepositorio.ObterTodos().ToList();
+            categoriasAdicionadas = _categoriaRepositorio.ObterTodos().ToList();
+            fabricantesCadastrados = _fabricanteRepositorio.ObterTodos().ToList();
 
             foreach (var documento in documentosImportador)
             {
-                var sexoId = 0;
-                if (documento.PacienteEnumSexoBiologico == "M")
-                {
-                    sexoId = 1;
-                }
-                else if (documento.PacienteEnumSexoBiologico == "F")
-                {
-                    sexoId = 2;
-                }
-                else
-                {
-                    sexoId = 3;
-                }
-
-                var endereco = enderecosAdicionadas.Single(p => p.CEP == documento.PacienteEnderecoCEP);
-                
-                var nacionalidadeId = 0;
-                if (documento.PacienteNacionalidadeEnumNacionalidade == "B")
-                {
-                    nacionalidadeId = 1;
-                }
-                else
-                {
-                    nacionalidadeId = 2;
-                }
-
-                var pacienteJaCadastrado = pacientesCadastrados.Where(p => p.Guid == documento.PacienteId);
-                Paciente paciente;
-                if (pacienteJaCadastrado.Any())
-                {
-                    paciente = pacienteJaCadastrado.Single();
-                }
-                else
-                {
-                    paciente = CadastrarERetornarPaciente(documento, sexoId, endereco, nacionalidadeId);
-                }
-
-                //var estabelecimentoJaCadastrado = estabelecimentosAdicionadas.Where(p => p.NomeFantasia == documento.EstabelecimentoNoFantasia);
-                //Estabelecimento estabelecimento;
-                //if (estabelecimentoJaCadastrado.Any())
+                //var sexoId = 0;
+                //if (documento.PacienteEnumSexoBiologico == "M")
                 //{
-                //    estabelecimento = estabelecimentoJaCadastrado.Single();
+                //    sexoId = 1;
+                //}
+                //else if (documento.PacienteEnumSexoBiologico == "F")
+                //{
+                //    sexoId = 2;
                 //}
                 //else
                 //{
-                //    estabelecimento = CadastrarERetornarEstabelecimento(documento, municipio);
+                //    sexoId = 3;
                 //}
 
-                //var categoriaJaCadastrado = categoriasAdicionadas.Where(p => p.Id == documento.VacinaCategoriaCodigo);
-                //Categoria categoria;
-                //if (categoriaJaCadastrado.Any())
+                //var nacionalidadeId = 0;
+                //if (documento.PacienteNacionalidadeEnumNacionalidade == "B")
                 //{
-                //    categoria = categoriaJaCadastrado.Single();
+                //    nacionalidadeId = 1;
                 //}
                 //else
                 //{
-                //    categoria = CadastrarERetornarCategoria(documento);
+                //    nacionalidadeId = 2;
                 //}
 
-                //var fabricanteJaCadastrado = fabricantesCadastrados.Where(p => p.Nome == documento.VacinaFabricanteNome);
-                //Fabricante fabricante;
-                //if (fabricanteJaCadastrado.Any())
-                //{
-                //    fabricante = fabricanteJaCadastrado.Single();
-                //}
-                //else
-                //{
-                //    fabricante = CadastrarERetornarFabricante(documento);
-                //}
+                var paciente = pacientesCadastrados.Single(p => p.Guid == documento.PacienteId);
+                var estabelecimento = estabelecimentosAdicionadas.Single(p => p.Valor == documento.EstabelecimentoValor);
+                var sistema = sistemasCadastrados.Single(p => p.Nome == documento.SistemaOrigem);
+                var grupoAtendimento = grupoAtendimentosCadastrados.Single(p => p.Id == documento.VacinaGrupoAtendimentoCodigo);
+                var categoria = categoriasAdicionadas.Single(p => p.Id == documento.VacinaCategoriaCodigo);
+                var fabricante = fabricantesCadastrados.Single(p => p.Nome == documento.VacinaFabricanteNome);
 
-                //var grupoAtendimentoJaCadastrado = grupoAtendimentosCadastrados.Where(p => p.Id == documento.VacinaGrupoAtendimentoCodigo);
-                //GrupoAtendimento grupoAtendimento;
-                //if (grupoAtendimentoJaCadastrado.Any())
-                //{
-                //    grupoAtendimento = grupoAtendimentoJaCadastrado.Single();
-                //}
-                //else
-                //{
-                //    grupoAtendimento = CadastrarERetornarGrupoAtendimento(documento);
-                //}
+                DocumentoVacinacao documentoVacinacao = new DocumentoVacinacao()
+                {
+                    Guid = documento.DocumentId,
+                    PacienteId = paciente.Id,
+                    EstabelecimentoId = estabelecimento.Id,
+                    SistemaOrigemId = sistema.Id,
+                    Nome = documento.VacinaNome,
+                    GrupoAtendimentoId = grupoAtendimento.Id,
+                    CategoriaId = categoria.Id,
+                    DataAplicacao = DateTime.SpecifyKind(documento.VacinaDataAplicacao, DateTimeKind.Utc),
+                    DescricaoDose = documento.VacinaDescricaoDose,
+                    FabricanteId = fabricante.Id,
+                    Lote = documento.VacinaLote,
+                    VacinaCodigo = documento.VacinaCodigo
+                };
 
-                //var SistemaJaCadastrado = sistemasCadastrados.Where(p => p.Nome == documento.SistemaOrigem);
-                //Sistema sistema;
-                //if (SistemaJaCadastrado.Any())
-                //{
-                //    sistema = SistemaJaCadastrado.Single();
-                //}
-                //else
-                //{
-                //    sistema = CadastrarERetornarSistema(documento);
-                //}
+                documenetVacinacaos.Add(documentoVacinacao);
 
-                //DocumentoVacinacao documentoVacinacao = new DocumentoVacinacao()
-                //{
-                //    Guid = documento.DocumentId,
-                //    PacienteId = paciente.Id,
-                //    EstabelecimentoId = estabelecimento.Id,
-                //    SistemaOrigemId = sistema.Id,
-                //    Nome = documento.VacinaNome,
-                //    GrupoAtendimentoId = grupoAtendimento.Id,
-                //    CategoriaId = categoria.Id,
-                //    DataAplicacao = DateTime.SpecifyKind(documento.VacinaDataAplicacao, DateTimeKind.Utc),
-                //    DescricaoDose = documento.VacinaDescricaoDose,
-                //    FabricanteId = fabricante.Id,
-                //    Lote = documento.VacinaLote,
-                //    VacinaCodigo = documento.VacinaCodigo
-                //};
-
-                //documenetVacinacaos.Add(documentoVacinacao);
-                //contador++;
+                contador++;
+                if (contador >= 5000)
+                {
+                    _documentoVacinacaoRepositorio.AdicionarConjunto(documenetVacinacaos);
+                    documenetVacinacaos.Clear();
+                    contador = 0;
+                }
             }
-            _pacienteRepositorio.AdicionarConjunto(pacientesCadastrados);
-            //_estabelecimentoRepositorio.AdicionarConjunto(estabelecimentosAdicionadas);
-            //_categoriaRepositorio.AdicionarConjunto(categoriasAdicionadas);
-            //_fabricanteRepositorio.AdicionarConjunto(fabricantesCadastrados);
-            //_grupoAtendimentoRepositorio.AdicionarConjunto(grupoAtendimentosCadastrados);
-            //_sistemaRepositorio.AdicionarConjunto(sistemasCadastrados);
-            //_documentoVacinacaoRepositorio.AdicionarConjunto(documenetVacinacaos);
+            //_pacienteRepositorio.AdicionarConjunto(pacientesCadastrados);
+            _documentoVacinacaoRepositorio.AdicionarConjunto(documenetVacinacaos);
         }
 
         private Sistema CadastrarERetornarSistema(DocumentoImportadoCSV documento)
@@ -278,13 +226,13 @@ namespace SergipeVac.Conversores
 
         }
 
-        private Estabelecimento CadastrarERetornarEstabelecimento(DocumentoImportadoCSV documento, Municipio municipio)
+        private Estabelecimento CadastrarERetornarEstabelecimento(DocumentoImportadoCSV documento, int municipioId)
         {
 
             var estabelecimento = new Estabelecimento()
             {
                 Id = _idEstabelecimento,
-                MunicipioId = municipio.Id,
+                MunicipioId = municipioId,
                 NomeFantasia = documento.EstabelecimentoNoFantasia,
                 RazaoSocial = documento.EstabelecimentoRazaoSocial,
                 Valor = documento.EstabelecimentoValor
