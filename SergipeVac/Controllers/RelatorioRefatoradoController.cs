@@ -18,7 +18,6 @@ namespace SergipeVac.Controllers
         private readonly IRepositorio<Paciente> _repositorioPaciente;
         private readonly IRepositorio<Raca> _repositorioRaca;
         private readonly IRepositorio<SexoBiologico> _repositorioSexoBiologico;
-        private readonly IRepositorio<Sistema> _repositorioSistema;
 
         public RelatorioRefatoradoController(IRepositorio<DocumentoVacinacao> repositorioDocumentoVacinacao,
                                              IRepositorio<Estabelecimento> repositorioEstabelecimento,
@@ -26,7 +25,6 @@ namespace SergipeVac.Controllers
                                              IRepositorio<Paciente> repositorioPaciente,
                                              IRepositorio<Raca> repositorioRaca,
                                              IRepositorio<SexoBiologico> repositorioSexoBiologico,
-                                             IRepositorio<Sistema> repositorioSistema,
                                              IRepositorio<Nacionalidade> repositorioNacionalidade,
                                              IRepositorio<Fabricante> repositorioFabricantes,
                                              IRepositorio<Categoria> repositorioCategoria)
@@ -37,7 +35,6 @@ namespace SergipeVac.Controllers
             _repositorioPaciente = repositorioPaciente;
             _repositorioRaca = repositorioRaca;
             _repositorioSexoBiologico = repositorioSexoBiologico;
-            _repositorioSistema = repositorioSistema;
             _repositorioNacionalidade = repositorioNacionalidade;
             _repositorioFabricantes = repositorioFabricantes;
             _repositorioCategoria = repositorioCategoria;
@@ -74,35 +71,6 @@ namespace SergipeVac.Controllers
                 return StatusCode(500, ex.Message);
             }
         }
-
-        [HttpGet("contagemporano")]
-        public async Task<IActionResult> ObterContagemVacinasPorAno(DateTime? dataMin = null, DateTime? dataMax = null)
-        {
-            try
-            {
-                dataMin ??= DateTime.MinValue;
-                dataMax ??= DateTime.MaxValue;
-
-                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
-
-                var vacinasAgrupadasPorAno = _repositorioDocumentoVacinacao
-                    .Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
-                    .GroupBy(v => new { v.DataAplicacao.Year })
-                    .Select(g => new
-                    {
-                        Ano = g.Key.Year,
-                        TotalVacinas = g.Count()
-                    });
-
-                return Json(vacinasAgrupadasPorAno);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
-        }
-
 
         [HttpGet("contagemporestabelecimento")]
         public async Task<IActionResult> ObterTopEstabelecimentos(int quantidade = 10, DateTime? dataMin = null, DateTime? dataMax = null)
@@ -251,95 +219,6 @@ namespace SergipeVac.Controllers
                                                                 .ToList();
 
                 return Json(quantidadeDePacientesPorDoce);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
-        }
-
-        [HttpGet("contagemporidade")]
-        public async Task<IActionResult> ObterVacinasAplicadasPorIdade(int idadeInicial = 0, int idadeFinal = 120, DateTime? dataMin = null, DateTime? dataMax = null)
-        {
-            try
-            {
-                dataMin ??= DateTime.MinValue;
-                dataMax ??= DateTime.MaxValue;
-
-                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
-
-                var quantidadeDeVacinasAplicadasPorIdade = _repositorioDocumentoVacinacao
-                    .Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
-                    .Join(_repositorioPaciente.Obter(p => p.Idade >= idadeInicial && p.Idade <= idadeFinal), dv => dv.PacienteId, p => p.Id,
-                        (dv, p) => new { Paciente = p, DocumentoVacinacao = dv })
-                    .GroupBy(x => x.Paciente.Idade)
-                    .Select(g => new
-                    {
-                        Idade = g.Key,
-                        QuantidadeVacinados = g.Count()
-                    });
-
-                return Json(quantidadeDeVacinasAplicadasPorIdade);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
-        }
-
-        [HttpGet("contagemporsistema")]
-        public async Task<IActionResult> ObterVacinasRegistradasPorSistema(DateTime? dataMin = null, DateTime? dataMax = null)
-        {
-            try
-            {
-                dataMin ??= DateTime.MinValue;
-                dataMax ??= DateTime.MaxValue;
-
-                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
-
-                var quantidadeDeVacinasRegistradasPorSistema = _repositorioDocumentoVacinacao
-                    .Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
-                    .Join(_repositorioSistema.ObterTodos(), dv => dv.SistemaOrigemId, p => p.Id,
-                        (dv, p) => new { Sistema = p, DocumentoVacinacao = dv })
-                    .GroupBy(x => x.Sistema.Nome)
-                    .Select(g => new
-                    {
-                        Sistema = g.Key,
-                        QuantidadeVacinadosSistema = g.Count()
-                    });
-
-                return Json(quantidadeDeVacinasRegistradasPorSistema);
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, ex.Message);
-            }
-        }
-
-        [HttpGet("contagemporvacinas")]
-        public async Task<IActionResult> ObterTopVacinasAplicadas(int quantidade = 10, DateTime? dataMin = null, DateTime? dataMax = null)
-        {
-            try
-            {
-                dataMin ??= DateTime.MinValue;
-                dataMax ??= DateTime.MaxValue;
-
-                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
-
-                var topVacinas = _repositorioDocumentoVacinacao.Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
-                    .GroupBy(x => x.Nome)
-                    .Select(g => new
-                    {
-                        Vacina = g.Key,
-                        Quantidade = g.Count()
-                    })
-                    .OrderByDescending(x => x.Quantidade)
-                    .Take(quantidade);
-
-                return Json(topVacinas);
             }
             catch (Exception ex)
             {

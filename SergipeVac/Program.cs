@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-using SergipeVac.Conversores;
 using SergipeVac.Infra;
 using SergipeVac.Infra.Repositorios;
 using SergipeVac.Model.Interface;
@@ -10,7 +9,6 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddScoped(typeof(IRepositorio<>), typeof(Repositorio<>));
-builder.Services.AddScoped<ConversorDados>();
 
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
@@ -21,16 +19,11 @@ builder.Services.AddSwaggerGen();
 
 var strBuilder = new NpgsqlConnectionStringBuilder()
 {
-    Port = 5432,
-    Host = "localhost",
-    Username = "Vinicius",
-    Password = "vinicius11",
-    Database = "SergipeVac"
-    //Port = 6108,
-    //Host = "containers-us-west-27.railway.app",
-    //Username = "postgres",
-    //Password = "sLPQxTAbuRBR60AYkT8Z",
-    //Database = "railway"
+    Port = 6108,
+    Host = "containers-us-west-27.railway.app",
+    Username = "postgres",
+    Password = "sLPQxTAbuRBR60AYkT8Z",
+    Database = "railway"
 };
 
 
