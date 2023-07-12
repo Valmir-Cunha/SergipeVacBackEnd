@@ -26,9 +26,9 @@ namespace SergipeVac.Controllers
                                              IRepositorio<Paciente> repositorioPaciente,
                                              IRepositorio<Raca> repositorioRaca,
                                              IRepositorio<SexoBiologico> repositorioSexoBiologico,
-                                             IRepositorio<Sistema> repositorioSistema, 
-                                             IRepositorio<Nacionalidade> repositorioNacionalidade, 
-                                             IRepositorio<Fabricante> repositorioFabricantes, 
+                                             IRepositorio<Sistema> repositorioSistema,
+                                             IRepositorio<Nacionalidade> repositorioNacionalidade,
+                                             IRepositorio<Fabricante> repositorioFabricantes,
                                              IRepositorio<Categoria> repositorioCategoria)
         {
             _repositorioDocumentoVacinacao = repositorioDocumentoVacinacao;
@@ -44,364 +44,448 @@ namespace SergipeVac.Controllers
         }
 
         [HttpGet("contagemporetnia")]
-        public async Task<JsonResult> ObterContagemPorEtnia(DateTime? dataMin = null, DateTime? dataMax = null)
+        public async Task<IActionResult> ObterContagemPorEtnia(DateTime? dataMin = null, DateTime? dataMax = null)
         {
-            dataMin ??= DateTime.MinValue;
-            dataMax ??= DateTime.MaxValue;
+            try
+            {
+                dataMin ??= DateTime.MinValue;
+                dataMax ??= DateTime.MaxValue;
 
-            var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-            var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
+                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
+                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
 
-            var quantidadeDeVacinasAplicadasPorEtnia = _repositorioDocumentoVacinacao
-                .Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
-                .Join(_repositorioPaciente.ObterTodos(), dv => dv.PacienteId, p => p.Id,
-                    (dv, p) => new { Paciente = p, DocumentoVacinacao = dv })
-                .Join(_repositorioRaca.ObterTodos(), x => x.Paciente.RacaId, e => e.Id,
-                    (x, e) => new { Etnia = e.Valor, x.DocumentoVacinacao })
-                .GroupBy(x => x.Etnia)
-                .Select(g => new
-                {
-                    Etnia = g.Key,
-                    QuantidadeVacinados = g.Count()
-                });
+                var quantidadeDeVacinasAplicadasPorEtnia = _repositorioDocumentoVacinacao
+                    .Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
+                    .Join(_repositorioPaciente.ObterTodos(), dv => dv.PacienteId, p => p.Id,
+                        (dv, p) => new { Paciente = p, DocumentoVacinacao = dv })
+                    .Join(_repositorioRaca.ObterTodos(), x => x.Paciente.RacaId, e => e.Id,
+                        (x, e) => new { Etnia = e.Valor, x.DocumentoVacinacao })
+                    .GroupBy(x => x.Etnia)
+                    .Select(g => new
+                    {
+                        Etnia = g.Key,
+                        QuantidadeVacinados = g.Count()
+                    });
 
-            return Json(quantidadeDeVacinasAplicadasPorEtnia);
+                return Json(quantidadeDeVacinasAplicadasPorEtnia);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpGet("contagemporano")]
-        public async Task<JsonResult> ObterContagemVacinasPorAno(DateTime? dataMin = null, DateTime? dataMax = null)
+        public async Task<IActionResult> ObterContagemVacinasPorAno(DateTime? dataMin = null, DateTime? dataMax = null)
         {
-            dataMin ??= DateTime.MinValue;
-            dataMax ??= DateTime.MaxValue;
+            try
+            {
+                dataMin ??= DateTime.MinValue;
+                dataMax ??= DateTime.MaxValue;
 
-            var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-            var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
+                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
+                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
 
-            var vacinasAgrupadasPorAno = _repositorioDocumentoVacinacao
-                .Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
-                .GroupBy(v => new { v.DataAplicacao.Year })
-                .Select(g => new
-                {
-                    Ano = g.Key.Year,
-                    TotalVacinas = g.Count()
-                });
+                var vacinasAgrupadasPorAno = _repositorioDocumentoVacinacao
+                    .Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
+                    .GroupBy(v => new { v.DataAplicacao.Year })
+                    .Select(g => new
+                    {
+                        Ano = g.Key.Year,
+                        TotalVacinas = g.Count()
+                    });
 
-            return Json(vacinasAgrupadasPorAno);
+                return Json(vacinasAgrupadasPorAno);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
 
         [HttpGet("contagemporestabelecimento")]
-        public async Task<JsonResult> ObterTopEstabelecimentos(int quantidade = 10, DateTime? dataMin = null, DateTime? dataMax = null)
+        public async Task<IActionResult> ObterTopEstabelecimentos(int quantidade = 10, DateTime? dataMin = null, DateTime? dataMax = null)
         {
-            dataMin ??= DateTime.MinValue;
-            dataMax ??= DateTime.MaxValue;
+            try
+            {
+                dataMin ??= DateTime.MinValue;
+                dataMax ??= DateTime.MaxValue;
 
-            var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-            var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
+                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
+                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
 
-            var topEstabelecimentos = _repositorioDocumentoVacinacao.Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
-                                                                    .GroupBy(x => x.EstabelecimentoId)
-                                                                    .Select(g => new
-                                                                    {
-                                                                        EstabelecimentoId = g.Key,
-                                                                        Frequencia = g.Count()
-                                                                    })
-                                                                    .OrderByDescending(x => x.Frequencia)
-                                                                    .Take(quantidade);
+                var topEstabelecimentos = _repositorioDocumentoVacinacao.Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
+                                                                        .GroupBy(x => x.EstabelecimentoId)
+                                                                        .Select(g => new
+                                                                        {
+                                                                            EstabelecimentoId = g.Key,
+                                                                            Frequencia = g.Count()
+                                                                        })
+                                                                        .OrderByDescending(x => x.Frequencia)
+                                                                        .Take(quantidade);
 
-            var topEstabelecimentosNomeados = topEstabelecimentos
-                .Join(
-                    _repositorioEstabelecimento.Obter(est =>
-                        topEstabelecimentos.Select(e => e.EstabelecimentoId).Contains(est.Id)
-                    ),
-                    dv => dv.EstabelecimentoId,
-                    e => e.Id,
-                    (dv, e) => new { DocumentoVacinacao = dv, Estabelecimento = e }
-                )
-                .GroupBy(x => x.Estabelecimento.NomeFantasia)
-                .Select(g => new
-                {
-                    Estabelecimento = g.Key,
-                    Frequencia = g.Sum(x => x.DocumentoVacinacao.Frequencia)
-                });
+                var topEstabelecimentosNomeados = topEstabelecimentos
+                    .Join(
+                        _repositorioEstabelecimento.Obter(est =>
+                            topEstabelecimentos.Select(e => e.EstabelecimentoId).Contains(est.Id)
+                        ),
+                        dv => dv.EstabelecimentoId,
+                        e => e.Id,
+                        (dv, e) => new { DocumentoVacinacao = dv, Estabelecimento = e }
+                    )
+                    .GroupBy(x => x.Estabelecimento.NomeFantasia)
+                    .Select(g => new
+                    {
+                        Estabelecimento = g.Key,
+                        Frequencia = g.Sum(x => x.DocumentoVacinacao.Frequencia)
+                    });
 
-            return Json(topEstabelecimentosNomeados);
+                return Json(topEstabelecimentosNomeados);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpGet("contagempornacionalidade")]
-        public async Task<JsonResult> ObterNacionalidades(DateTime? dataMin = null, DateTime? dataMax = null)
+        public async Task<IActionResult> ObterNacionalidades(DateTime? dataMin = null, DateTime? dataMax = null)
         {
-            dataMin ??= DateTime.MinValue;
-            dataMax ??= DateTime.MaxValue;
+            try
+            {
+                dataMin ??= DateTime.MinValue;
+                dataMax ??= DateTime.MaxValue;
 
-            var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-            var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
+                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
+                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
 
-            var vacinasAplicadaEntreAsDatasInformadas = _repositorioDocumentoVacinacao.Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc);
+                var vacinasAplicadaEntreAsDatasInformadas = _repositorioDocumentoVacinacao.Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc);
 
-            var vacinadosPorNacionalidade = vacinasAplicadaEntreAsDatasInformadas
-                .Join(_repositorioPaciente.ObterTodos(),
-                    dv => dv.PacienteId,
-                    p => p.Id,
-                    (dv, p) => new { Paciente = p, DocumentoVacinacao = dv })
-                .Join(_repositorioNacionalidade.ObterTodos(),
-                    pac => pac.Paciente.NacionalidadeId,
-                    na => na.Id,
-                    (pac, na) => new { pac.Paciente, Nacionalidade = na })
-                .GroupBy(g => g.Nacionalidade)
-                .Select(g => new
-                {
-                    Nacionalidade = g.Key,
-                    TotalPacientes = g.Select(d => d.Paciente)
-                        .Distinct()
-                        .Count()
-                });
+                var vacinadosPorNacionalidade = vacinasAplicadaEntreAsDatasInformadas
+                    .Join(_repositorioPaciente.ObterTodos(),
+                        dv => dv.PacienteId,
+                        p => p.Id,
+                        (dv, p) => new { Paciente = p, DocumentoVacinacao = dv })
+                    .Join(_repositorioNacionalidade.ObterTodos(),
+                        pac => pac.Paciente.NacionalidadeId,
+                        na => na.Id,
+                        (pac, na) => new { pac.Paciente, Nacionalidade = na })
+                    .GroupBy(g => g.Nacionalidade)
+                    .Select(g => new
+                    {
+                        Nacionalidade = g.Key,
+                        TotalPacientes = g.Select(d => d.Paciente)
+                            .Distinct()
+                            .Count()
+                    });
 
 
-            return Json(vacinadosPorNacionalidade);
+                return Json(vacinadosPorNacionalidade);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpGet("contagemporsexo")]
-        public async Task<JsonResult> ObterVacinadosPorSexoBiologico(DateTime? dataMin = null, DateTime? dataMax = null)
+        public async Task<IActionResult> ObterVacinadosPorSexoBiologico(DateTime? dataMin = null, DateTime? dataMax = null)
         {
-            dataMin ??= DateTime.MinValue;
-            dataMax ??= DateTime.MaxValue;
+            try
+            {
+                dataMin ??= DateTime.MinValue;
+                dataMax ??= DateTime.MaxValue;
 
-            var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-            var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
+                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
+                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
 
-            var vacinadosPorSexoBiologico = _repositorioDocumentoVacinacao
-                .Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
-                .Join(_repositorioPaciente.ObterTodos(),
-                    dv => dv.PacienteId,
-                    p => p.Id,
-                    (dv, p) => new { Paciente = p, DocumentoVacinacao = dv })
-                .Join(_repositorioSexoBiologico.ObterTodos(),
-                    pac => pac.Paciente.SexoBiologicoId,
-                    sb => sb.Id,
-                    (pac, sb) => new { pac.Paciente, SexoBiologico = sb })
-                .GroupBy(g => g.SexoBiologico)
-                .Select(g => new
-                {
-                    SexoBiologico = g.Key,
-                    TotalPacientes = g.Select(d => d.Paciente.Id)
-                        .Distinct()
-                        .Count()
-                });
+                var vacinadosPorSexoBiologico = _repositorioDocumentoVacinacao
+                    .Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
+                    .Join(_repositorioPaciente.ObterTodos(),
+                        dv => dv.PacienteId,
+                        p => p.Id,
+                        (dv, p) => new { Paciente = p, DocumentoVacinacao = dv })
+                    .Join(_repositorioSexoBiologico.ObterTodos(),
+                        pac => pac.Paciente.SexoBiologicoId,
+                        sb => sb.Id,
+                        (pac, sb) => new { pac.Paciente, SexoBiologico = sb })
+                    .GroupBy(g => g.SexoBiologico)
+                    .Select(g => new
+                    {
+                        SexoBiologico = g.Key,
+                        TotalPacientes = g.Select(d => d.Paciente.Id)
+                            .Distinct()
+                            .Count()
+                    });
 
-            return Json(vacinadosPorSexoBiologico);
+                return Json(vacinadosPorSexoBiologico);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
 
         [HttpGet("contagempordose")]
-        public async Task<JsonResult> ObterVacinadosPorDose(DateTime? dataMin = null, DateTime? dataMax = null)
+        public async Task<IActionResult> ObterVacinadosPorDose(DateTime? dataMin = null, DateTime? dataMax = null)
         {
-            dataMin ??= DateTime.MinValue;
-            dataMax ??= DateTime.MaxValue;
+            try
+            {
+                dataMin ??= DateTime.MinValue;
+                dataMax ??= DateTime.MaxValue;
 
-            var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-            var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
+                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
+                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
 
-            var vacinasAplicadaEntreAsDatasInformadas = _repositorioDocumentoVacinacao.Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc);
+                var vacinasAplicadaEntreAsDatasInformadas = _repositorioDocumentoVacinacao.Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc);
 
-            var quantidadeDePacientesPorDoce = vacinasAplicadaEntreAsDatasInformadas
-                                                            .GroupBy(d => d.DescricaoDose)
-                                                            .Select(g => new
-                                                            {
-                                                                VacinaDescricaoDose = g.Key,
-                                                                TotalPacientes = g.Select(d => d.PacienteId).Count()
-                                                            })
-                                                            .ToList();
+                var quantidadeDePacientesPorDoce = vacinasAplicadaEntreAsDatasInformadas
+                                                                .GroupBy(d => d.DescricaoDose)
+                                                                .Select(g => new
+                                                                {
+                                                                    VacinaDescricaoDose = g.Key,
+                                                                    TotalPacientes = g.Select(d => d.PacienteId).Count()
+                                                                })
+                                                                .ToList();
 
-            return Json(quantidadeDePacientesPorDoce);
+                return Json(quantidadeDePacientesPorDoce);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpGet("contagemporidade")]
-        public async Task<JsonResult> ObterVacinasAplicadasPorIdade(int idadeInicial = 0, int idadeFinal = 120, DateTime? dataMin = null, DateTime? dataMax = null)
+        public async Task<IActionResult> ObterVacinasAplicadasPorIdade(int idadeInicial = 0, int idadeFinal = 120, DateTime? dataMin = null, DateTime? dataMax = null)
         {
-            dataMin ??= DateTime.MinValue;
-            dataMax ??= DateTime.MaxValue;
+            try
+            {
+                dataMin ??= DateTime.MinValue;
+                dataMax ??= DateTime.MaxValue;
 
-            var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-            var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
+                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
+                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
 
-            var quantidadeDeVacinasAplicadasPorIdade = _repositorioDocumentoVacinacao
-                .Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
-                .Join(_repositorioPaciente.Obter(p => p.Idade>= idadeInicial && p.Idade <= idadeFinal), dv => dv.PacienteId, p => p.Id,
-                    (dv, p) => new { Paciente = p, DocumentoVacinacao = dv })
-                .GroupBy(x => x.Paciente.Idade)
-                .Select(g => new
-                {
-                    Idade = g.Key,
-                    QuantidadeVacinados = g.Count()
-                });
+                var quantidadeDeVacinasAplicadasPorIdade = _repositorioDocumentoVacinacao
+                    .Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
+                    .Join(_repositorioPaciente.Obter(p => p.Idade >= idadeInicial && p.Idade <= idadeFinal), dv => dv.PacienteId, p => p.Id,
+                        (dv, p) => new { Paciente = p, DocumentoVacinacao = dv })
+                    .GroupBy(x => x.Paciente.Idade)
+                    .Select(g => new
+                    {
+                        Idade = g.Key,
+                        QuantidadeVacinados = g.Count()
+                    });
 
-            return Json(quantidadeDeVacinasAplicadasPorIdade);
+                return Json(quantidadeDeVacinasAplicadasPorIdade);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpGet("contagemporsistema")]
-        public async Task<JsonResult> ObterVacinasRegistradasPorSistema(DateTime? dataMin = null, DateTime? dataMax = null)
+        public async Task<IActionResult> ObterVacinasRegistradasPorSistema(DateTime? dataMin = null, DateTime? dataMax = null)
         {
-            dataMin ??= DateTime.MinValue;
-            dataMax ??= DateTime.MaxValue;
+            try
+            {
+                dataMin ??= DateTime.MinValue;
+                dataMax ??= DateTime.MaxValue;
 
-            var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-            var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
+                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
+                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
 
-            var quantidadeDeVacinasRegistradasPorSistema = _repositorioDocumentoVacinacao
-                .Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
-                .Join(_repositorioSistema.ObterTodos(), dv => dv.SistemaOrigemId, p => p.Id,
-                    (dv, p) => new { Sistema = p, DocumentoVacinacao = dv })
-                .GroupBy(x => x.Sistema.Nome)
-                .Select(g => new
-                {
-                    Sistema = g.Key,
-                    QuantidadeVacinadosSistema = g.Count()
-                });
+                var quantidadeDeVacinasRegistradasPorSistema = _repositorioDocumentoVacinacao
+                    .Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
+                    .Join(_repositorioSistema.ObterTodos(), dv => dv.SistemaOrigemId, p => p.Id,
+                        (dv, p) => new { Sistema = p, DocumentoVacinacao = dv })
+                    .GroupBy(x => x.Sistema.Nome)
+                    .Select(g => new
+                    {
+                        Sistema = g.Key,
+                        QuantidadeVacinadosSistema = g.Count()
+                    });
 
-            return Json(quantidadeDeVacinasRegistradasPorSistema);
+                return Json(quantidadeDeVacinasRegistradasPorSistema);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpGet("contagemporvacinas")]
-        public async Task<JsonResult> ObterTopVacinasAplicadas(int quantidade = 10, DateTime? dataMin = null, DateTime? dataMax = null)
+        public async Task<IActionResult> ObterTopVacinasAplicadas(int quantidade = 10, DateTime? dataMin = null, DateTime? dataMax = null)
         {
-            dataMin ??= DateTime.MinValue;
-            dataMax ??= DateTime.MaxValue;
+            try
+            {
+                dataMin ??= DateTime.MinValue;
+                dataMax ??= DateTime.MaxValue;
 
-            var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-            var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
+                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
+                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
 
-            var topVacinas = _repositorioDocumentoVacinacao.Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
-                .GroupBy(x => x.Nome)
-                .Select(g => new
-                {
-                    Vacina = g.Key,
-                    Quantidade = g.Count()
-                })
-                .OrderByDescending(x => x.Quantidade)
-                .Take(quantidade);
+                var topVacinas = _repositorioDocumentoVacinacao.Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
+                    .GroupBy(x => x.Nome)
+                    .Select(g => new
+                    {
+                        Vacina = g.Key,
+                        Quantidade = g.Count()
+                    })
+                    .OrderByDescending(x => x.Quantidade)
+                    .Take(quantidade);
 
-            return Json(topVacinas);
+                return Json(topVacinas);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpGet("contagemporgrupo")]
-        public async Task<JsonResult> ObterTopVacinasAplicadasPorGrupo(int quantidade = 10, DateTime? dataMin = null, DateTime? dataMax = null)
+        public async Task<IActionResult> ObterTopVacinasAplicadasPorGrupo(int quantidade = 10, DateTime? dataMin = null, DateTime? dataMax = null)
         {
-            dataMin ??= DateTime.MinValue;
-            dataMax ??= DateTime.MaxValue;
+            try
+            {
+                dataMin ??= DateTime.MinValue;
+                dataMax ??= DateTime.MaxValue;
 
-            var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-            var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
+                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
+                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
 
-            var topGrupos = _repositorioDocumentoVacinacao.Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
-                .GroupBy(x => x.GrupoAtendimentoId)
-                .Select(g => new
-                {
-                    GrupoAtendimentoId = g.Key,
-                    Quantidade = g.Count()
-                })
-                .OrderByDescending(x => x.Quantidade)
-                .Take(quantidade);
+                var topGrupos = _repositorioDocumentoVacinacao.Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
+                    .GroupBy(x => x.GrupoAtendimentoId)
+                    .Select(g => new
+                    {
+                        GrupoAtendimentoId = g.Key,
+                        Quantidade = g.Count()
+                    })
+                    .OrderByDescending(x => x.Quantidade)
+                    .Take(quantidade);
 
-            var topGruposNomeados = topGrupos
-                .Join(
-                    _repositorioGrupoAtendimento.Obter(est =>
-                        topGrupos.Select(e => e.GrupoAtendimentoId).Contains(est.Id)
-                    ),
-                    dv => dv.GrupoAtendimentoId,
-                    e => e.Id,
-                    (dv, e) => new { DocumentoVacinacao = dv, GrupoAtendimento = e }
-                )
-                .GroupBy(x => x.GrupoAtendimento.Nome)
-                .Select(g => new
-                {
-                    GrupoAtendimento = g.Key,
-                    Frequencia = g.Sum(x => x.DocumentoVacinacao.Quantidade)
-                });
+                var topGruposNomeados = topGrupos
+                    .Join(
+                        _repositorioGrupoAtendimento.Obter(est =>
+                            topGrupos.Select(e => e.GrupoAtendimentoId).Contains(est.Id)
+                        ),
+                        dv => dv.GrupoAtendimentoId,
+                        e => e.Id,
+                        (dv, e) => new { DocumentoVacinacao = dv, GrupoAtendimento = e }
+                    )
+                    .GroupBy(x => x.GrupoAtendimento.Nome)
+                    .Select(g => new
+                    {
+                        GrupoAtendimento = g.Key,
+                        Frequencia = g.Sum(x => x.DocumentoVacinacao.Quantidade)
+                    });
 
-            return Json(topGruposNomeados);
+                return Json(topGruposNomeados);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpGet("contagemporcategoria")]
-        public async Task<JsonResult> ObterTopVacinasAplicadasPorCategoria(int quantidade = 10, DateTime? dataMin = null, DateTime? dataMax = null)
+        public async Task<IActionResult> ObterTopVacinasAplicadasPorCategoria(int quantidade = 10, DateTime? dataMin = null, DateTime? dataMax = null)
         {
-            dataMin ??= DateTime.MinValue;
-            dataMax ??= DateTime.MaxValue;
+            try
+            {
+                dataMin ??= DateTime.MinValue;
+                dataMax ??= DateTime.MaxValue;
 
-            var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
-            var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
+                var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
+                var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
 
-            var topCategorias = _repositorioDocumentoVacinacao.Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
-                .GroupBy(x => x.CategoriaId)
-                .Select(g => new
-                {
-                    CategoriaId = g.Key,
-                    Quantidade = g.Count()
-                })
-                .OrderByDescending(x => x.Quantidade)
-                .Take(quantidade);
+                var topCategorias = _repositorioDocumentoVacinacao.Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
+                    .GroupBy(x => x.CategoriaId)
+                    .Select(g => new
+                    {
+                        CategoriaId = g.Key,
+                        Quantidade = g.Count()
+                    })
+                    .OrderByDescending(x => x.Quantidade)
+                    .Take(quantidade);
 
-            var topCategoriasNomeados = topCategorias
-                .Join(
-                    _repositorioCategoria.Obter(cat =>
-                        topCategorias.Select(e => e.CategoriaId).Contains(cat.Id)
-                    ),
-                    dv => dv.CategoriaId,
-                    e => e.Id,
-                    (dv, e) => new { DocumentoVacinacao = dv, Categoria = e }
-                )
-                .GroupBy(x => x.Categoria.Nome)
-                .Select(g => new
-                {
-                    Categoria = g.Key,
-                    Frequencia = g.Sum(x => x.DocumentoVacinacao.Quantidade)
-                });
+                var topCategoriasNomeados = topCategorias
+                    .Join(
+                        _repositorioCategoria.Obter(cat =>
+                            topCategorias.Select(e => e.CategoriaId).Contains(cat.Id)
+                        ),
+                        dv => dv.CategoriaId,
+                        e => e.Id,
+                        (dv, e) => new { DocumentoVacinacao = dv, Categoria = e }
+                    )
+                    .GroupBy(x => x.Categoria.Nome)
+                    .Select(g => new
+                    {
+                        Categoria = g.Key,
+                        Frequencia = g.Sum(x => x.DocumentoVacinacao.Quantidade)
+                    });
 
-            return Json(topCategoriasNomeados);
+                return Json(topCategoriasNomeados);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
         [HttpGet("totalizadores")]
-        public async Task<JsonResult> ObterTotalizadores()
+        public async Task<IActionResult> ObterTotalizadores()
         {
-            var quantidadeDePacientesVacinados = _repositorioPaciente.QuantidadeTotal();
-            var quantidadeDeVacinasAplicadas = _repositorioDocumentoVacinacao.QuantidadeTotal();
-            var quantidadeDeEstrangeiros = _repositorioPaciente.QuantidadeDe(P => P.NacionalidadeId == 2);
-            var numEstabelecimentos = _repositorioEstabelecimento.QuantidadeTotal();
-
-            var topFabricante = _repositorioDocumentoVacinacao.ObterTodos()
-                .GroupBy(x => x.FabricanteId)
-                .Select(g => new
-                {
-                    FabricanteId = g.Key,
-                    Quantidade = g.Count()
-                })
-                .OrderByDescending(x => x.Quantidade)
-                .Take(1);
-
-            var fabricanteComMaisDosesAplicadas = topFabricante
-                .Join(
-                    _repositorioFabricantes.Obter(fab =>
-                        topFabricante.Select(e => e.FabricanteId).Contains(fab.Id)
-                    ),
-                    dv => dv.FabricanteId,
-                    e => e.Id,
-                    (dv, e) => new { DocumentoVacinacao = dv, Fabricante = e }
-                ).Select(g => new
-                {
-                    Fabricante = g.Fabricante.Nome, g.DocumentoVacinacao.Quantidade
-                }).SingleOrDefault();
-
-            var jsonData = new
+            try
             {
-                quantidadeDePacientesVacinados,
-                quantidadeDeVacinasAplicadas,
-                quantidadeDeEstrangeiros,
-                numEstabelecimentos,
-                fabricanteComMaisDosesAplicadas,
-            };
+                var quantidadeDePacientesVacinados = _repositorioPaciente.QuantidadeTotal();
+                var quantidadeDeVacinasAplicadas = _repositorioDocumentoVacinacao.QuantidadeTotal();
+                var quantidadeDeEstrangeiros = _repositorioPaciente.QuantidadeDe(P => P.NacionalidadeId == 2);
+                var numEstabelecimentos = _repositorioEstabelecimento.QuantidadeTotal();
 
-            return new JsonResult(jsonData);
+                var topFabricante = _repositorioDocumentoVacinacao.ObterTodos()
+                    .GroupBy(x => x.FabricanteId)
+                    .Select(g => new
+                    {
+                        FabricanteId = g.Key,
+                        Quantidade = g.Count()
+                    })
+                    .OrderByDescending(x => x.Quantidade)
+                    .Take(1);
 
+                var fabricanteComMaisDosesAplicadas = topFabricante
+                    .Join(
+                        _repositorioFabricantes.Obter(fab =>
+                            topFabricante.Select(e => e.FabricanteId).Contains(fab.Id)
+                        ),
+                        dv => dv.FabricanteId,
+                        e => e.Id,
+                        (dv, e) => new { DocumentoVacinacao = dv, Fabricante = e }
+                    ).Select(g => new
+                    {
+                        Fabricante = g.Fabricante.Nome,
+                        g.DocumentoVacinacao.Quantidade
+                    }).SingleOrDefault();
+
+                var jsonData = new
+                {
+                    quantidadeDePacientesVacinados,
+                    quantidadeDeVacinasAplicadas,
+                    quantidadeDeEstrangeiros,
+                    numEstabelecimentos,
+                    fabricanteComMaisDosesAplicadas,
+                };
+
+                return Json(jsonData);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, ex.Message);
+            }
         }
 
     }
