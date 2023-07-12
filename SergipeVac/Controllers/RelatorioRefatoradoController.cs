@@ -9,9 +9,10 @@ namespace SergipeVac.Controllers
     [Route("api/[controller]")]
     public class RelatorioRefatoradoController : Controller
     {
-        private readonly IRepositorio<DocumentoImportadoCSV> _repositorio;
+        private readonly IRepositorio<Categoria> _repositorioCategoria;
         private readonly IRepositorio<DocumentoVacinacao> _repositorioDocumentoVacinacao;
         private readonly IRepositorio<Estabelecimento> _repositorioEstabelecimento;
+        private readonly IRepositorio<Fabricante> _repositorioFabricantes;
         private readonly IRepositorio<GrupoAtendimento> _repositorioGrupoAtendimento;
         private readonly IRepositorio<Nacionalidade> _repositorioNacionalidade;
         private readonly IRepositorio<Paciente> _repositorioPaciente;
@@ -19,17 +20,17 @@ namespace SergipeVac.Controllers
         private readonly IRepositorio<SexoBiologico> _repositorioSexoBiologico;
         private readonly IRepositorio<Sistema> _repositorioSistema;
 
-        public RelatorioRefatoradoController(IRepositorio<DocumentoImportadoCSV> repositorio,
-                                             IRepositorio<DocumentoVacinacao> repositorioDocumentoVacinacao,
+        public RelatorioRefatoradoController(IRepositorio<DocumentoVacinacao> repositorioDocumentoVacinacao,
                                              IRepositorio<Estabelecimento> repositorioEstabelecimento,
                                              IRepositorio<GrupoAtendimento> repositorioGrupoAtendimento,
                                              IRepositorio<Paciente> repositorioPaciente,
                                              IRepositorio<Raca> repositorioRaca,
                                              IRepositorio<SexoBiologico> repositorioSexoBiologico,
                                              IRepositorio<Sistema> repositorioSistema, 
-                                             IRepositorio<Nacionalidade> repositorioNacionalidade)
+                                             IRepositorio<Nacionalidade> repositorioNacionalidade, 
+                                             IRepositorio<Fabricante> repositorioFabricantes, 
+                                             IRepositorio<Categoria> repositorioCategoria)
         {
-            _repositorio = repositorio;
             _repositorioDocumentoVacinacao = repositorioDocumentoVacinacao;
             _repositorioEstabelecimento = repositorioEstabelecimento;
             _repositorioGrupoAtendimento = repositorioGrupoAtendimento;
@@ -38,6 +39,8 @@ namespace SergipeVac.Controllers
             _repositorioSexoBiologico = repositorioSexoBiologico;
             _repositorioSistema = repositorioSistema;
             _repositorioNacionalidade = repositorioNacionalidade;
+            _repositorioFabricantes = repositorioFabricantes;
+            _repositorioCategoria = repositorioCategoria;
         }
 
         [HttpGet("contagemporetnia")]
@@ -199,10 +202,10 @@ namespace SergipeVac.Controllers
             var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
             var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
 
-            var vacinasAplicadaEntreAsDatasInformadas = _repositorio.Obter(p => p.VacinaDataAplicacao >= dataMinUtc && p.VacinaDataAplicacao <= dataMaxUtc);
+            var vacinasAplicadaEntreAsDatasInformadas = _repositorioDocumentoVacinacao.Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc);
 
             var quantidadeDePacientesPorDoce = vacinasAplicadaEntreAsDatasInformadas
-                                                            .GroupBy(d => d.VacinaDescricaoDose)
+                                                            .GroupBy(d => d.DescricaoDose)
                                                             .Select(g => new
                                                             {
                                                                 VacinaDescricaoDose = g.Key,
@@ -312,11 +315,49 @@ namespace SergipeVac.Controllers
                 .GroupBy(x => x.GrupoAtendimento.Nome)
                 .Select(g => new
                 {
-                    Estabelecimento = g.Key,
+                    GrupoAtendimento = g.Key,
                     Frequencia = g.Sum(x => x.DocumentoVacinacao.Quantidade)
                 });
 
             return Json(topGruposNomeados);
+        }
+
+        [HttpGet("contagemporcategoria")]
+        public async Task<JsonResult> ObterTopVacinasAplicadasPorCategoria(int quantidade = 10, DateTime? dataMin = null, DateTime? dataMax = null)
+        {
+            dataMin ??= DateTime.MinValue;
+            dataMax ??= DateTime.MaxValue;
+
+            var dataMinUtc = new DateTimeOffset(dataMin.Value, TimeSpan.Zero);
+            var dataMaxUtc = new DateTimeOffset(dataMax.Value, TimeSpan.Zero);
+
+            var topCategorias = _repositorioDocumentoVacinacao.Obter(p => p.DataAplicacao >= dataMinUtc && p.DataAplicacao <= dataMaxUtc)
+                .GroupBy(x => x.CategoriaId)
+                .Select(g => new
+                {
+                    CategoriaId = g.Key,
+                    Quantidade = g.Count()
+                })
+                .OrderByDescending(x => x.Quantidade)
+                .Take(quantidade);
+
+            var topCategoriasNomeados = topCategorias
+                .Join(
+                    _repositorioCategoria.Obter(cat =>
+                        topCategorias.Select(e => e.CategoriaId).Contains(cat.Id)
+                    ),
+                    dv => dv.CategoriaId,
+                    e => e.Id,
+                    (dv, e) => new { DocumentoVacinacao = dv, Categoria = e }
+                )
+                .GroupBy(x => x.Categoria.Nome)
+                .Select(g => new
+                {
+                    Categoria = g.Key,
+                    Frequencia = g.Sum(x => x.DocumentoVacinacao.Quantidade)
+                });
+
+            return Json(topCategoriasNomeados);
         }
 
         [HttpGet("totalizadores")]
@@ -327,6 +368,28 @@ namespace SergipeVac.Controllers
             var quantidadeDeEstrangeiros = _repositorioPaciente.QuantidadeDe(P => P.NacionalidadeId == 2);
             var numEstabelecimentos = _repositorioEstabelecimento.QuantidadeTotal();
 
+            var topFabricante = _repositorioDocumentoVacinacao.ObterTodos()
+                .GroupBy(x => x.FabricanteId)
+                .Select(g => new
+                {
+                    FabricanteId = g.Key,
+                    Quantidade = g.Count()
+                })
+                .OrderByDescending(x => x.Quantidade)
+                .Take(1);
+
+            var fabricanteComMaisDosesAplicadas = topFabricante
+                .Join(
+                    _repositorioFabricantes.Obter(fab =>
+                        topFabricante.Select(e => e.FabricanteId).Contains(fab.Id)
+                    ),
+                    dv => dv.FabricanteId,
+                    e => e.Id,
+                    (dv, e) => new { DocumentoVacinacao = dv, Fabricante = e }
+                ).Select(g => new
+                {
+                    Fabricante = g.Fabricante.Nome, g.DocumentoVacinacao.Quantidade
+                }).SingleOrDefault();
 
             var jsonData = new
             {
@@ -334,11 +397,7 @@ namespace SergipeVac.Controllers
                 quantidadeDeVacinasAplicadas,
                 quantidadeDeEstrangeiros,
                 numEstabelecimentos,
-                fabricanteComMaisDosesAplicadas = new
-                {
-                    fabricante = "PFIZER",
-                    quantidade = 902040
-                }
+                fabricanteComMaisDosesAplicadas,
             };
 
             return new JsonResult(jsonData);
