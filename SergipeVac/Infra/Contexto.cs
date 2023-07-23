@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SergipeVac.Model;
+using SergipeVac.Model.Autenticacao;
 
 namespace SergipeVac.Infra
 {
@@ -9,6 +10,7 @@ namespace SergipeVac.Infra
         {
         }
 
+        #region Registros de vacinação
         public DbSet<DocumentoImportadoCSV> DocumentoImportadoCSV { get; set; }
         public DbSet<Categoria> Categoria { get; set; }
         public DbSet<DocumentoVacinacao> DocumentosVacinacao { get; set; }
@@ -24,8 +26,14 @@ namespace SergipeVac.Infra
         public DbSet<SexoBiologico> SexoBiologico { get; set; }
         public DbSet<Sistema> Sistema { get; set; }
 
+        #endregion
+
+        public DbSet<Usuario> Usuario { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            #region Registros de vacinação
+
             modelBuilder.Entity<DocumentoVacinacao>(entity =>
             {
                 entity.HasOne(c => c.Paciente)
@@ -95,6 +103,13 @@ namespace SergipeVac.Infra
             modelBuilder.Entity<DocumentoImportadoCSV>(entity =>
             {
                 entity.HasKey(c => c.DocumentId);
+            });
+
+            #endregion
+
+            modelBuilder.Entity<Usuario>(entity =>
+            {
+                entity.HasKey(p => p.Codigo);
             });
         }
     }
