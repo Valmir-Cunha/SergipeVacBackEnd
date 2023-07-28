@@ -8,3 +8,7 @@ Publish/
 # Arquivos gerados pelo Visual Studio
 .vs/
 *.suo
+
+#arquivos de deploy
+Dockerfile
+docker-compose.yml
