@@ -16,7 +16,7 @@ namespace SergipeVac.Controllers
             _repositorio = repositorio;
         }
 
-        [HttpGet("contagemporetniaa")]
+        [HttpGet("contagemporetnia")]
         public async Task<JsonResult> ObterContagemPorEtnia(DateTime? dataMin = null, DateTime? dataMax = null)
         {
             dataMin ??= DateTime.MinValue;
