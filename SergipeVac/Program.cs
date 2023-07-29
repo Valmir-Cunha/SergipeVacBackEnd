@@ -19,11 +19,16 @@ builder.Services.AddSwaggerGen();
 
 var strBuilder = new NpgsqlConnectionStringBuilder()
 {
+    //Port = 5432,
+    //Host = "database-1.cievgxafnjws.us-east-1.rds.amazonaws.com",
+    //Username = "postgres",
+    //Password = "daL2n7nCHI92qGPHjfBw",
+    //Database = "postgres"
     Port = 5432,
-    Host = "database-1.cievgxafnjws.us-east-1.rds.amazonaws.com",
+    Host = "localhost",
     Username = "postgres",
-    Password = "daL2n7nCHI92qGPHjfBw",
-    Database = "postgres"
+    Password = "vinicius11",
+    Database = "SergipeVac"
 };
 
 

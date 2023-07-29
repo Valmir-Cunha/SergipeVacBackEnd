@@ -110,6 +110,7 @@ namespace SergipeVac.Infra
             modelBuilder.Entity<Usuario>(entity =>
             {
                 entity.HasKey(p => p.Codigo);
+                entity.HasIndex(p => p.Email).IsUnique();
             });
         }
     }
