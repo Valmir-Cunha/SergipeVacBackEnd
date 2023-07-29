@@ -75,17 +75,27 @@ namespace SergipeVac.Controllers
         }
 
         [HttpGet("/obterTodos")]
-        public void ObterTodos()
+        public Task<IActionResult> ObterTodos()
         {
-            // Lógica para obter todos os usuários
-            // ...
+            var usuarios = _repositorioUsuario.ObterTodos();
+            if (usuarios == null)
+            {
+                return Task.FromResult<IActionResult>(BadRequest("Usuários não encontrados."));
+            }
+
+            return Task.FromResult<IActionResult>(Ok(usuarios));
         }
 
         [HttpGet("/obter/{codigo}")]
-        public void Obter(int codigo)
+        public Task<IActionResult> Obter(int codigo)
         {
-            // Lógica para obter o usuário com o código fornecido
-            // ...
+            var usuario = _repositorioUsuario.Obter(u => u.Codigo == codigo).SingleOrDefault();
+            if (usuario == null)
+            {
+                return Task.FromResult<IActionResult>(BadRequest("Usuário não encontrado."));
+            }
+
+            return Task.FromResult<IActionResult>(Ok(usuario));
         }
     }
 }

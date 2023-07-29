@@ -28,6 +28,7 @@ namespace SergipeVac.Infra.Repositorios
         public void Excluir(T entidade)
         {
             _contexto.Remove(entidade);
+            _contexto.SaveChanges();
         }
 
         public IQueryable<T> ObterTodos()
