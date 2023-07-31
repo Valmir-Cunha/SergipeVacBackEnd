@@ -7,7 +7,7 @@ namespace SergipeVac.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class UsuarioController : ControllerBase
+    public class UsuarioController : Controller
     {
         private readonly IRepositorio<Usuario> _repositorioUsuario;
         public UsuarioController(IRepositorio<Usuario> repositorioUsuario)
@@ -15,7 +15,7 @@ namespace SergipeVac.Controllers
             _repositorioUsuario = repositorioUsuario;
         }
 
-        [HttpPost("/cadastrar")]
+        [HttpPost("cadastrar")]
         public Task<IActionResult> Cadastrar([FromBody] Usuario usuario)
         {
             if (!ModelState.IsValid)
@@ -46,14 +46,14 @@ namespace SergipeVac.Controllers
             return Task.FromResult<IActionResult>(Ok("Usuário cadastrado com sucesso!"));
         }
 
-        [HttpPut("/editar/{codigo}")]
+        [HttpPut("editar/{codigo}")]
         public void Editar(int codigo)
         {
             // Lógica para editar o usuário com o código fornecido
             // ...
         }
 
-        [HttpDelete("/excluir/{codigo}")]
+        [HttpDelete("excluir/{codigo}")]
         public Task<IActionResult> Excluir(int codigo)
         {
             var usuario = _repositorioUsuario.Obter(u => u.Codigo == codigo).SingleOrDefault();
@@ -74,7 +74,7 @@ namespace SergipeVac.Controllers
             return Task.FromResult<IActionResult>(Ok("Usuário excluído com sucesso!"));
         }
 
-        [HttpGet("/obterTodos")]
+        [HttpGet("obterTodos")]
         public Task<IActionResult> ObterTodos()
         {
             var usuarios = _repositorioUsuario.ObterTodos();
@@ -86,7 +86,7 @@ namespace SergipeVac.Controllers
             return Task.FromResult<IActionResult>(Ok(usuarios));
         }
 
-        [HttpGet("/obter/{codigo}")]
+        [HttpGet("obter/{codigo}")]
         public Task<IActionResult> Obter(int codigo)
         {
             var usuario = _repositorioUsuario.Obter(u => u.Codigo == codigo).SingleOrDefault();
