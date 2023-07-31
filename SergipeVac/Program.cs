@@ -15,8 +15,6 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-
-
 var strBuilder = new NpgsqlConnectionStringBuilder()
 {
     Port = 5432,
@@ -34,6 +32,12 @@ var strBuilder = new NpgsqlConnectionStringBuilder()
 
 builder.Services.AddEntityFrameworkNpgsql().AddDbContext<Contexto>(options =>
 options.UseNpgsql(strBuilder.ConnectionString));
+
+using (var serviceProvider = builder.Services.BuildServiceProvider())
+{
+    var context = serviceProvider.GetRequiredService<Contexto>();
+    context.Database.Migrate();
+}
 
 var app = builder.Build();
 
