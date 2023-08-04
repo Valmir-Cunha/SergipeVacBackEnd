@@ -47,10 +47,10 @@ var strBuilder = new NpgsqlConnectionStringBuilder()
     Password = "daL2n7nCHI92qGPHjfBw",
     Database = "postgres"
     //Port = 5432,
-    //Host = "localhost",
+    //Host = "100.68.8.49",
     //Username = "postgres",
-    //Password = "vinicius11",
-    //Database = "SergipeVac"
+    //Password = "postgres",
+    //Database = "postgres"
 };
 
 builder.Services.AddEntityFrameworkNpgsql().AddDbContext<Contexto>(options =>
@@ -65,11 +65,10 @@ using (var serviceProvider = builder.Services.BuildServiceProvider())
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+
+app.UseSwagger();
+app.UseSwaggerUI();
+
 app.UseCors(options => options.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 app.UseHttpsRedirection();
 

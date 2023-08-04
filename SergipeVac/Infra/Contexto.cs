@@ -1,6 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SergipeVac.Model;
 using SergipeVac.Model.Autenticacao;
+using SergipeVac.Model.Localizacao;
 
 namespace SergipeVac.Infra
 {
@@ -111,6 +112,15 @@ namespace SergipeVac.Infra
             {
                 entity.HasKey(p => p.Codigo);
                 entity.HasIndex(p => p.Email).IsUnique();
+            });
+
+            modelBuilder.Entity<Localizacao>(entity =>
+            {
+
+                entity.HasKey(p => p.Id);
+                entity.HasIndex(p => p.Cidade);
+                entity.HasIndex(p => p.Estado);
+
             });
         }
     }
