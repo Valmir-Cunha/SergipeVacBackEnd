@@ -24,7 +24,12 @@ namespace SergipeVac.Controllers
 
             if (user == null)
                 return BadRequest("Usuário ou senha inválidos");
-            
+
+            if (!usuario.Senha.Equals(user.Senha))
+            {
+                return BadRequest("Usuário ou senha inválidos");
+            }
+
             var token = _servicoToken.GerarToken(user);
 
             return new ContentResult
