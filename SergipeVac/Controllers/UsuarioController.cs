@@ -2,6 +2,8 @@
 using SergipeVac.Model.Autenticacao;
 using SergipeVac.Model.Interface;
 using System.ComponentModel.DataAnnotations;
+using SergipeVac.Model.DTOs;
+using SergipeVac.Servicos;
 
 namespace SergipeVac.Controllers
 {
@@ -10,9 +12,11 @@ namespace SergipeVac.Controllers
     public class UsuarioController : Controller
     {
         private readonly IRepositorio<Usuario> _repositorioUsuario;
-        public UsuarioController(IRepositorio<Usuario> repositorioUsuario)
+        private readonly ServicoUsuario _servicoUsario;
+        public UsuarioController(IRepositorio<Usuario> repositorioUsuario, ServicoUsuario servicoUsario)
         {
             _repositorioUsuario = repositorioUsuario;
+            _servicoUsario = servicoUsario;
         }
 
         [HttpPost("cadastrar")]
@@ -36,6 +40,9 @@ namespace SergipeVac.Controllers
 
             try
             {
+                //var senhaCriptografada = _servicoUsario.CriptografarSenha(usuario.Senha);
+                //usuario.Senha = senhaCriptografada;
+
                 _repositorioUsuario.Adicionar(usuario);
             }
             catch (Exception e)
@@ -49,8 +56,7 @@ namespace SergipeVac.Controllers
         [HttpPut("editar/{codigo}")]
         public void Editar(int codigo)
         {
-            // Lógica para editar o usuário com o código fornecido
-            // ...
+            return;
         }
 
         [HttpDelete("excluir/{codigo}")]
@@ -83,7 +89,20 @@ namespace SergipeVac.Controllers
                 return Task.FromResult<IActionResult>(BadRequest("Usuários não encontrados."));
             }
 
-            return Task.FromResult<IActionResult>(Ok(usuarios));
+            var usuariosDTO = new List<UsuarioDTO>();
+
+            foreach (var usuario in usuarios)
+            {
+                var usuarioDTO = new UsuarioDTO()
+                {
+                    Codigo = usuario.Codigo,
+                    Email = usuario.Email,
+                    Nome = usuario.Nome,
+                };
+                usuariosDTO.Add(usuarioDTO);
+            }
+
+            return Task.FromResult<IActionResult>(Ok(usuariosDTO));
         }
 
         [HttpGet("obter/{codigo}")]
@@ -95,7 +114,14 @@ namespace SergipeVac.Controllers
                 return Task.FromResult<IActionResult>(BadRequest("Usuário não encontrado."));
             }
 
-            return Task.FromResult<IActionResult>(Ok(usuario));
+            var usuarioDTO = new UsuarioDTO()
+            {
+                Codigo = usuario.Codigo,
+                Email = usuario.Email,
+                Nome = usuario.Nome,
+            };
+
+            return Task.FromResult<IActionResult>(Ok(usuarioDTO));
         }
     }
 }
