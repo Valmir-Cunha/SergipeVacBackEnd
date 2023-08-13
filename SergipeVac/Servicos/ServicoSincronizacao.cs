@@ -116,5 +116,51 @@ namespace SergipeVac.Servicos
 
             return null;
         }
+
+        public void ObterProximoScrollAPI()
+        {
+
+        }
+
+        public void ObterDadosAPartirDaUltimaSincronizacao()
+        {
+            DateTime dataUltimaSincronizacao = new DateTime(2023, 6, 4);
+            int codigoAracajuIBGE = 280030;
+            var ufSergipe = "SE";
+
+            var bodyRequisicao = 
+            $@"{{
+                ""track_total_hits"": true,
+                ""query"": {{
+                    ""bool"": {{
+                        ""filter"": [
+                            {{
+                                ""range"": {{
+                                    ""vacina_dataAplicacao"": {{
+                                        ""gte"": ""{dataUltimaSincronizacao.ToString("yyyy-MM-dd")}""
+                                    }}
+                                }}
+                            }},
+                            {{
+                                ""match"": {{
+                                    ""estabelecimento_municipio_codigo"": ""{codigoAracajuIBGE}""
+                                }}
+                            }},
+                            {{
+                                ""match"": {{
+                                    ""paciente_endereco_coIbgeMunicipio"": ""{codigoAracajuIBGE}""
+                                }}
+                            }},
+                            {{
+                                ""match"": {{
+                                    ""estabelecimento_uf"": ""{ufSergipe}""
+                                }}
+                            }}
+                        ]
+                    }}
+                }}
+            }}";
+
+        }
     }
 }
