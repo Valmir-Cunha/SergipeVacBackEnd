@@ -2,8 +2,7 @@
 
 namespace SergipeVac.Model.ModeloDados
 {
-    [Table("documentovacinacao")]
-    public class DocumentoImportadoCSV
+    public class DocumentoImportado
     {
         [Column("document_id")]
         public string? DocumentId { get; set; }
@@ -48,7 +47,7 @@ namespace SergipeVac.Model.ModeloDados
         public string PacienteNacionalidadeEnumNacionalidade { get; set; }
 
         [Column("estabelecimento_valor")]
-        public int EstabelecimentoValor { get; set; }
+        public int EstabelecimentoValor { get; set; } // nÃO POSSUI NA API
 
         [Column("estabelecimento_razaosocial")]
         public string EstabelecimentoRazaoSocial { get; set; }

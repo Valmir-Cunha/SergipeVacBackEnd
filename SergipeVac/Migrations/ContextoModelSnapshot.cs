@@ -70,7 +70,7 @@ namespace SergipeVac.Migrations
                     b.ToTable("Categoria");
                 });
 
-            modelBuilder.Entity("SergipeVac.Model.DocumentoImportadoCSV", b =>
+            modelBuilder.Entity("SergipeVac.Model.DocumentoImportado", b =>
                 {
                     b.Property<string>("DocumentId")
                         .HasColumnType("text")

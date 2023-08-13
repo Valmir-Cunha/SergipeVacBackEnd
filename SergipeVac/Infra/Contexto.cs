@@ -13,7 +13,7 @@ namespace SergipeVac.Infra
         }
 
         #region Registros de vacinação
-        public DbSet<DocumentoImportadoCSV> DocumentoImportadoCSV { get; set; }
+        public DbSet<DocumentoImportado> DocumentoImportadoCSV { get; set; }
         public DbSet<Categoria> Categoria { get; set; }
         public DbSet<DocumentoVacinacao> DocumentosVacinacao { get; set; }
         public DbSet<Endereco> Endereco { get; set; }
@@ -104,7 +104,7 @@ namespace SergipeVac.Infra
                       .HasForeignKey(c => c.NacionalidadeId);
             });
 
-            modelBuilder.Entity<DocumentoImportadoCSV>(entity =>
+            modelBuilder.Entity<DocumentoImportado>(entity =>
             {
                 entity.HasKey(c => c.DocumentId);
             });
