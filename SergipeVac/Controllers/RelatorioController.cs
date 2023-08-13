@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Npgsql;
 using SergipeVac.Model.Interface;
 using SergipeVac.Model.ModeloDados;
 
@@ -7,7 +6,7 @@ namespace SergipeVac.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class RelatorioRefatoradoController : Controller
+    public class RelatorioController : Controller
     {
         private readonly IRepositorio<Categoria> _repositorioCategoria;
         private readonly IRepositorio<DocumentoVacinacao> _repositorioDocumentoVacinacao;
@@ -19,7 +18,7 @@ namespace SergipeVac.Controllers
         private readonly IRepositorio<Raca> _repositorioRaca;
         private readonly IRepositorio<SexoBiologico> _repositorioSexoBiologico;
 
-        public RelatorioRefatoradoController(IRepositorio<DocumentoVacinacao> repositorioDocumentoVacinacao,
+        public RelatorioController(IRepositorio<DocumentoVacinacao> repositorioDocumentoVacinacao,
                                              IRepositorio<Estabelecimento> repositorioEstabelecimento,
                                              IRepositorio<GrupoAtendimento> repositorioGrupoAtendimento,
                                              IRepositorio<Paciente> repositorioPaciente,
