@@ -1,7 +1,8 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SergipeVac.Model;
 using SergipeVac.Model.Autenticacao;
 using SergipeVac.Model.Localizacao;
+using SergipeVac.Model.ModeloDados;
+using SergipeVac.Model.Sincronizacao;
 
 namespace SergipeVac.Infra
 {
@@ -30,6 +31,8 @@ namespace SergipeVac.Infra
         #endregion
 
         public DbSet<Usuario> Usuario { get; set; }
+        
+        public DbSet<DadosSincronizacao> DadosSincronizacao { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Npgsql;
-using SergipeVac.Model;
 using SergipeVac.Model.Interface;
+using SergipeVac.Model.ModeloDados;
 
 namespace SergipeVac.Controllers
 {

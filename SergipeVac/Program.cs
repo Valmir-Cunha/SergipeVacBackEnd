@@ -5,7 +5,6 @@ using SergipeVac.Infra;
 using SergipeVac.Infra.Repositorios;
 using SergipeVac.Model.Interface;
 using SergipeVac.Servicos;
-using System.Text;
 using SergipeVac;
 using Microsoft.IdentityModel.Tokens;
 
@@ -16,6 +15,9 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddScoped(typeof(IRepositorio<>), typeof(Repositorio<>));
 builder.Services.AddScoped(typeof(IServicoToken), typeof(ServicoToken));
 builder.Services.AddScoped(typeof(ServicoUsuario));
+builder.Services.AddHttpClient<ServicoSincronizacao>();
+builder.Services.AddScoped(typeof(ServicoSincronizacao));
+
 
 builder.Services.AddControllers();
 

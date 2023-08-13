@@ -13,10 +13,14 @@ namespace SergipeVac.Controllers
     {
         private readonly IRepositorio<Usuario> _repositorioUsuario;
         private readonly ServicoUsuario _servicoUsario;
-        public UsuarioController(IRepositorio<Usuario> repositorioUsuario, ServicoUsuario servicoUsario)
+        private readonly ServicoSincronizacao _servicoSincronizacao;
+        public UsuarioController(IRepositorio<Usuario> repositorioUsuario, 
+                                 ServicoUsuario servicoUsario, 
+                                 ServicoSincronizacao servicoSincronizacao)
         {
             _repositorioUsuario = repositorioUsuario;
             _servicoUsario = servicoUsario;
+            _servicoSincronizacao = servicoSincronizacao;
         }
 
         [HttpPost("cadastrar")]
@@ -56,8 +60,9 @@ namespace SergipeVac.Controllers
         [HttpPut("editar/{codigo}")]
         public void Editar(int codigo)
         {
-            return;
+            _servicoSincronizacao.SincronizarDadosAsync();
         }
+
 
         [HttpDelete("excluir/{codigo}")]
         public Task<IActionResult> Excluir(int codigo)
