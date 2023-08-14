@@ -1,5 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
-using SergipeVac.Model.Interface;
+﻿using SergipeVac.Model.Interface;
 using System.Linq.Expressions;
 
 namespace SergipeVac.Infra.Repositorios

@@ -13,6 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddScoped(typeof(IRepositorio<>), typeof(Repositorio<>));
+builder.Services.AddScoped(typeof(RepositorioSincronizacao));
 builder.Services.AddScoped(typeof(IServicoToken), typeof(ServicoToken));
 builder.Services.AddScoped(typeof(ServicoUsuario));
 builder.Services.AddHttpClient<ServicoSincronizacao>();

@@ -1,12 +1,23 @@
-﻿using Newtonsoft.Json.Linq;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using RestSharp;
+using SergipeVac.Infra.Repositorios;
 using SergipeVac.Model.ModeloDados;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SergipeVac.Servicos
 {
     public class ServicoSincronizacao
     {
+        private readonly int _totalDeResgistrosPorRequisicao = 10000;
+        private List<DocumentoImportado> ListaDocumentosImportados { get; set; }
+        private RepositorioSincronizacao RepositorioSincronizacao { get; set; }
+
+        public ServicoSincronizacao(RepositorioSincronizacao repositorioSincronizacao)
+        {
+            RepositorioSincronizacao = repositorioSincronizacao;
+            ListaDocumentosImportados = new List<DocumentoImportado>();
+        }
+
         public async Task SincronizarDadosAsync()
         {
             await ObterDadosASincronizarAsync();
@@ -16,41 +27,32 @@ namespace SergipeVac.Servicos
         {
             try
             {
-                var listaDocumentosImportados = new List<DocumentoImportado>();
+                var bodyRequisicao = ObterDadosAPartirDaUltimaSincronizacao();
 
-                var opcoes = new RestClientOptions("https://imunizacao-es.saude.gov.br")
-                {
-                    MaxTimeout = -1,
-                };
-                var cliente = new RestClient(opcoes);
-                var requisicao = new RestRequest("/_search");
-                requisicao.AddHeader("Authorization", "Basic aW11bml6YWNhb19wdWJsaWM6cWx0bzV0JjdyX0ArI1Rsc3RpZ2k=");
-                RestResponse respostaRequisicao = await cliente.ExecuteAsync(requisicao);
+                RestResponse respostaRequisicao = await RealizarRequisicaoUltimosRegistrosAsync(bodyRequisicao, "/_search?scroll=1m");
 
                 if (respostaRequisicao.StatusCode == System.Net.HttpStatusCode.OK)
                 {
                     var conteudoResposta = respostaRequisicao.Content;
-                    var jsonResposta = Newtonsoft.Json.JsonConvert.DeserializeObject<JObject>(conteudoResposta);
+                    var jsonResposta = JsonConvert.DeserializeObject<JObject>(conteudoResposta);
 
                     var dadosVacinacaoJSON = jsonResposta["hits"]["hits"];
 
                     var totalDeRegistros = jsonResposta["hits"]["total"]["value"];
 
-                    if (totalDeRegistros != null && (int) totalDeRegistros > 10000)
+                    if (totalDeRegistros != null && (int) totalDeRegistros > _totalDeResgistrosPorRequisicao)
                     {
+                        var scroll = jsonResposta["_scroll_id"];
+                        await ObterRegistrosComScroll(scroll, dadosVacinacaoJSON, totalDeRegistros);
                         Console.WriteLine(totalDeRegistros);
                     }
-
-                    foreach (var hit in dadosVacinacaoJSON)
+                    else
                     {
-                        var documentoVacinacaoJSON = hit["_source"];
-
-                        var documentoVacinacaoImportado = ObterDocumentoImportado(documentoVacinacaoJSON);
-
-                        listaDocumentosImportados.Add(documentoVacinacaoImportado);
+                        ObterDocumentosImportadosJSON(dadosVacinacaoJSON);
                     }
 
-                    Console.WriteLine(listaDocumentosImportados.Count);
+                    ConverterDados();
+                    SalvarSincronizacaoBemSucedida();
                 }
                 else
                 {
@@ -61,6 +63,72 @@ namespace SergipeVac.Servicos
             {
                 Console.WriteLine("Erro: " + ex.Message);
             }
+        }
+
+        private async Task<RestResponse> RealizarRequisicaoUltimosRegistrosAsync(string bodyRequisicao, string endPoint)
+        {
+            try
+            {
+                var opcoes = new RestClientOptions("https://imunizacao-es.saude.gov.br")
+                {
+                    MaxTimeout = -1,
+                };
+                var cliente = new RestClient(opcoes);
+                var requisicao = new RestRequest(endPoint);
+
+                requisicao.AddHeader("Content-Type", "application/json");
+                requisicao.AddHeader("Authorization", "Basic aW11bml6YWNhb19wdWJsaWM6cWx0bzV0JjdyX0ArI1Rsc3RpZ2k=");
+
+                requisicao.AddStringBody(bodyRequisicao, DataFormat.Json);
+
+                return await cliente.ExecuteAsync(requisicao);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erro na requisição: " + ex.Message);
+                return null;
+            }
+        }
+
+        private async Task ObterRegistrosComScroll(JToken scrollPrimeiraReq, JToken dadosVacinacaoJSON, JToken totalRegistros)
+        {
+            var quantidadeDeScrool = Math.Ceiling((decimal) totalRegistros / _totalDeResgistrosPorRequisicao);
+            var scroll = scrollPrimeiraReq;
+            var dadosVacinacoes = dadosVacinacaoJSON;
+            for (var rodada = 1; rodada <= quantidadeDeScrool; rodada++)
+            {
+                ObterDocumentosImportadosJSON(dadosVacinacoes);
+                RestResponse respostaRequisicao = await ObterProximoScrollAPI(scroll);
+                if (respostaRequisicao.StatusCode == System.Net.HttpStatusCode.OK)
+                {
+                    var jsonResposta = JsonConvert.DeserializeObject<JObject>(respostaRequisicao.Content);
+
+                    dadosVacinacoes = jsonResposta["hits"]["hits"];
+                }
+                else
+                {
+                    break;
+                }
+            }
+        }
+
+        private void ObterDocumentosImportadosJSON(JToken dadosVacinacaoJSON)
+        {
+            foreach (var hit in dadosVacinacaoJSON)
+            {
+                var documentoVacinacaoJSON = hit["_source"];
+
+                var documentoVacinacaoImportado = ObterDocumentoImportado(documentoVacinacaoJSON);
+
+                ListaDocumentosImportados.Add(documentoVacinacaoImportado);
+            }
+        }
+
+        public async Task<RestResponse> ObterProximoScrollAPI(JToken scroll)
+        {
+            var bodyRequisicao = ObterDadosDoProximoScroll((string) scroll);
+            RestResponse respostaRequisicao = await RealizarRequisicaoUltimosRegistrosAsync(bodyRequisicao, "/_search/scroll");
+            return respostaRequisicao;
         }
 
         private DocumentoImportado ObterDocumentoImportado(JToken documentoVacinacaoJson)
@@ -117,19 +185,20 @@ namespace SergipeVac.Servicos
             return null;
         }
 
-        public void ObterProximoScrollAPI()
+        public string ObterDadosAPartirDaUltimaSincronizacao()
         {
-
-        }
-
-        public void ObterDadosAPartirDaUltimaSincronizacao()
-        {
-            DateTime dataUltimaSincronizacao = new DateTime(2023, 6, 4);
+            DateTime dataUltimaSincronizacao = RepositorioSincronizacao.ObterUltimaSincronizacaoBemSucedida();
+            if (dataUltimaSincronizacao == null || dataUltimaSincronizacao == DateTime.MinValue.Date)
+            {
+                Console.WriteLine("Erro ao obter última atualização! \nSincronização não será realizada!");
+                throw new Exception("Erro ao obter última atualização!");
+            }
             int codigoAracajuIBGE = 280030;
             var ufSergipe = "SE";
 
-            var bodyRequisicao = 
+            var bodyRequisicao =
             $@"{{
+                ""size"": ""{_totalDeResgistrosPorRequisicao}"",
                 ""track_total_hits"": true,
                 ""query"": {{
                     ""bool"": {{
@@ -137,7 +206,7 @@ namespace SergipeVac.Servicos
                             {{
                                 ""range"": {{
                                     ""vacina_dataAplicacao"": {{
-                                        ""gte"": ""{dataUltimaSincronizacao.ToString("yyyy-MM-dd")}""
+                                        ""gte"": ""{dataUltimaSincronizacao:yyyy-MM-dd}""
                                     }}
                                 }}
                             }},
@@ -155,12 +224,38 @@ namespace SergipeVac.Servicos
                                 ""match"": {{
                                     ""estabelecimento_uf"": ""{ufSergipe}""
                                 }}
+                            }},
+                            {{
+                                ""match"": {{
+                                    ""status"": ""final""
+                                }}
                             }}
                         ]
                     }}
                 }}
             }}";
 
+            return bodyRequisicao;
+        }
+
+        public string ObterDadosDoProximoScroll(string scroll)
+        {
+            var bodyRequisicao =
+                $@"{{
+                ""scroll_id"": ""{scroll}"",
+                ""scroll"": ""2m""
+                }}";
+
+            return bodyRequisicao;
+        }
+
+        private void ConverterDados()
+        {
+            Console.WriteLine(ListaDocumentosImportados.Count);
+        }
+        private void SalvarSincronizacaoBemSucedida()
+        {
+            throw new NotImplementedException();
         }
     }
 }
