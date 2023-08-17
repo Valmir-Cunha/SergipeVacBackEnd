@@ -1,8 +1,10 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RestSharp;
+using SergipeVac.Conversores;
 using SergipeVac.Infra.Repositorios;
 using SergipeVac.Model.ModeloDados;
+using SergipeVac.Model.Sincronizacao;
 
 namespace SergipeVac.Servicos
 {
@@ -11,11 +13,17 @@ namespace SergipeVac.Servicos
         private readonly int _totalDeResgistrosPorRequisicao = 10000;
         private List<DocumentoImportado> ListaDocumentosImportados { get; set; }
         private RepositorioSincronizacao RepositorioSincronizacao { get; set; }
+        private ConversorDados ConversorDados { get; set; }
 
-        public ServicoSincronizacao(RepositorioSincronizacao repositorioSincronizacao)
+        private DateTime _inicioSincronizacao;
+
+
+        public ServicoSincronizacao(RepositorioSincronizacao repositorioSincronizacao, ConversorDados conversorDados)
         {
             RepositorioSincronizacao = repositorioSincronizacao;
+            ConversorDados = conversorDados;
             ListaDocumentosImportados = new List<DocumentoImportado>();
+            _inicioSincronizacao = DateTime.Now;
         }
 
         public async Task SincronizarDadosAsync()
@@ -251,11 +259,17 @@ namespace SergipeVac.Servicos
 
         private void ConverterDados()
         {
-            Console.WriteLine(ListaDocumentosImportados.Count);
+            ConversorDados.ConverterDocumentoImportadoParaDocumentosVacinacao(ListaDocumentosImportados);
         }
         private void SalvarSincronizacaoBemSucedida()
         {
-            throw new NotImplementedException();
+            DadosSincronizacao dadosSincronizacao = new DadosSincronizacao
+            {
+                BemSucedida = true,
+                QuantidadeRegistrosAdicionados = ListaDocumentosImportados.Count,
+                UltimaSincronizacao = _inicioSincronizacao,
+            };
+            RepositorioSincronizacao.Adicionar(dadosSincronizacao);
         }
     }
 }

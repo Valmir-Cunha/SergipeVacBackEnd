@@ -56,6 +56,14 @@ namespace SergipeVac.Infra.Repositorios
             return _contexto.Set<T>().Count();
         }
 
+        public int ObterProximoId(string nomeCampoId)
+        {
+            var todosRegistros = _contexto.Set<T>().ToList();
+            var idMaisAlto = todosRegistros.Max(p => (int) p.GetType().GetProperty(nomeCampoId).GetValue(p));
+            var proximoId = idMaisAlto + 1;
+            return proximoId;
+        }
+
         public void Dispose()
         {
             _contexto.Dispose();

@@ -12,5 +12,6 @@ namespace SergipeVac.Model.Interface
         IQueryable<T> Obter(Expression<Func<T, bool>> expressao);
         int QuantidadeDe(Expression<Func<T, bool>> expressao);
         int QuantidadeTotal();
+        int ObterProximoId(string nomeCampoId);
     }
 }

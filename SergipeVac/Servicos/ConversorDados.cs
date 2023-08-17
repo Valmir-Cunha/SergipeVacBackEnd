@@ -1,4 +1,6 @@
-﻿using SergipeVac.Model.Interface;
+﻿using System.Collections.Concurrent;
+using SergipeVac.Infra;
+using SergipeVac.Model.Interface;
 using SergipeVac.Model.ModeloDados;
 
 namespace SergipeVac.Conversores
@@ -12,32 +14,35 @@ namespace SergipeVac.Conversores
         private readonly IRepositorio<Estabelecimento> _estabelecimentoRepositorio;
         private readonly IRepositorio<Fabricante> _fabricanteRepositorio;
         private readonly IRepositorio<GrupoAtendimento> _grupoAtendimentoRepositorio;
-        private readonly IRepositorio<Municipio> _municipioRepositorio;
-        private readonly IRepositorio<Nacionalidade> _nacionalidadeRepositorio;
         private readonly IRepositorio<Paciente> _pacienteRepositorio;
-        private readonly IRepositorio<Pais> _paisRepositorio;
-        private readonly IRepositorio<Raca> _racaRepositorio;
-        private readonly IRepositorio<SexoBiologico> _sexoBiologicoRepositorio;
         private readonly IRepositorio<Sistema> _sistemaRepositorio;
-        private readonly object _lock = new object();
+        private readonly IServiceProvider _serviceProvider;
 
         int _sistemaId = 1;
         int _idPaciente = 1;
         int _idFabricante = 1;
         int _idEstabelecimento = 1;
         int _idEndereco = 1;
-        int _idMunicipio = 1;
 
-        List<Paciente> pacientesCadastrados = new List<Paciente>();
-        List<Sistema> sistemasCadastrados = new List<Sistema>();
-        List<GrupoAtendimento> grupoAtendimentosCadastrados = new List<GrupoAtendimento>();
-        List<Fabricante> fabricantesCadastrados = new List<Fabricante>();
-        List<Categoria> categoriasAdicionadas = new List<Categoria>();
-        List<Estabelecimento> estabelecimentosAdicionadas = new List<Estabelecimento>();
-        List<Endereco> enderecosAdicionadas = new List<Endereco>();
-        List<Municipio> municipiosAdicionadas = new List<Municipio>();
+        ConcurrentBag<Paciente> pacientesCadastrados = new();
+        ConcurrentBag<Sistema> sistemasCadastrados = new();
+        ConcurrentBag<GrupoAtendimento> grupoAtendimentosCadastrados = new();
+        ConcurrentBag<Fabricante> fabricantesCadastrados = new();
+        ConcurrentBag<Categoria> categoriasAdicionadas = new();
+        ConcurrentBag<Estabelecimento> estabelecimentosAdicionados = new();
+        ConcurrentBag<Endereco> enderecosAdicionados = new();
+        //List<DocumentoVacinacao> documentosVacinacoes = new();
 
-        public ConversorDados(IRepositorio<DocumentoImportado> documentoImportadoRepositorio, IRepositorio<Categoria> categoriaRepositorio, IRepositorio<DocumentoVacinacao> documentoVacinacaoRepositorio, IRepositorio<Endereco> enderecoRepositorio, IRepositorio<Estabelecimento> estabelecimentoRepositorio, IRepositorio<Fabricante> fabricanteRepositorio, IRepositorio<GrupoAtendimento> grupoAtendimentoRepositorio, IRepositorio<Municipio> municipioRepositorio, IRepositorio<Nacionalidade> nacionalidadeRepositorio, IRepositorio<Paciente> pacienteRepositorio, IRepositorio<Pais> paisRepositorio, IRepositorio<Raca> racaRepositorio, IRepositorio<SexoBiologico> sexoBiologicoRepositorio, IRepositorio<Sistema> sistemaRepositorio)
+        public ConversorDados(IRepositorio<DocumentoImportado> documentoImportadoRepositorio,
+                              IRepositorio<Categoria> categoriaRepositorio,
+                              IRepositorio<DocumentoVacinacao> documentoVacinacaoRepositorio,
+                              IRepositorio<Endereco> enderecoRepositorio,
+                              IRepositorio<Estabelecimento> estabelecimentoRepositorio,
+                              IRepositorio<Fabricante> fabricanteRepositorio,
+                              IRepositorio<GrupoAtendimento> grupoAtendimentoRepositorio,
+                              IRepositorio<Paciente> pacienteRepositorio,
+                              IRepositorio<Sistema> sistemaRepositorio,
+                              IServiceProvider serviceProvider)
         {
             _categoriaRepositorio = categoriaRepositorio;
             _documentoVacinacaoRepositorio = documentoVacinacaoRepositorio;
@@ -45,145 +50,80 @@ namespace SergipeVac.Conversores
             _estabelecimentoRepositorio = estabelecimentoRepositorio;
             _fabricanteRepositorio = fabricanteRepositorio;
             _grupoAtendimentoRepositorio = grupoAtendimentoRepositorio;
-            _municipioRepositorio = municipioRepositorio;
-            _nacionalidadeRepositorio = nacionalidadeRepositorio;
             _pacienteRepositorio = pacienteRepositorio;
-            _paisRepositorio = paisRepositorio;
-            _racaRepositorio = racaRepositorio;
-            _sexoBiologicoRepositorio = sexoBiologicoRepositorio;
             _sistemaRepositorio = sistemaRepositorio;
+            _serviceProvider = serviceProvider;
             _documentoImportadoRepositorio = documentoImportadoRepositorio;
+            ObterProximosIds();
         }
+
+        private void ObterProximosIds()
+        {
+            _sistemaId = _sistemaRepositorio.ObterProximoId("Id");
+            _idPaciente = _pacienteRepositorio.ObterProximoId("Id");
+            _idFabricante = _fabricanteRepositorio.ObterProximoId("Id");
+            _idEstabelecimento = _estabelecimentoRepositorio.ObterProximoId("Id");
+            _idEndereco = _enderecoRepositorio.ObterProximoId("Id");
+        }
+
         public void ConverterDocumentoImportadoParaDocumentosVacinacao(List<DocumentoImportado> documentosImportados)
         {
-            bool consultaConcluida = false;
-            List<DocumentoVacinacao> documentosVacinacaoMapeados = new List<DocumentoVacinacao>();
+            using var scope = _serviceProvider.CreateScope();
+            var dbContext = scope.ServiceProvider.GetRequiredService<Contexto>();
 
-            Thread consultaThread = new Thread(() =>
+            using var transaction = dbContext.Database.BeginTransaction();
+
+            try
             {
-                documentosImportados = _documentoImportadoRepositorio.ObterTodos().ToList();
-                consultaConcluida = true;
-            });
+                ConcurrentBag<DocumentoVacinacao> documentosVacinacoes = new();
 
-            consultaThread.Start();
+                documentosImportados.AsParallel().ForAll(documentoImportado =>
+                {
+                    var sexoId = ObterSexoBiologico(documentoImportado.PacienteEnumSexoBiologico);
+                    var endereco = ObterEndereco(documentoImportado.PacienteEnderecoCEP);
+                    var nacionalidadeId = documentoImportado.PacienteNacionalidadeEnumNacionalidade == "B" ? 1 : 2;
+                    var paciente = ObterPaciente(documentoImportado, sexoId, endereco, nacionalidadeId);
+                    var estabelecimento = ObterEstabelecimento(documentoImportado);
+                    var categoria = ObterCategoria(documentoImportado);
+                    var fabricante = ObterFabricante(documentoImportado);
+                    var grupoAtendimento = ObterGrupoAtendimento(documentoImportado);
+                    var sistema = ObterSistema(documentoImportado);
+                    var documentoVacinacao = new DocumentoVacinacao()
+                    {
+                        Guid = documentoImportado.DocumentId,
+                        PacienteId = paciente.Id,
+                        EstabelecimentoId = estabelecimento.Id,
+                        SistemaOrigemId = sistema.Id,
+                        Nome = documentoImportado.VacinaNome,
+                        GrupoAtendimentoId = grupoAtendimento.Id,
+                        CategoriaId = categoria.Id,
+                        DataAplicacao = DateTime.SpecifyKind(documentoImportado.VacinaDataAplicacao, DateTimeKind.Utc),
+                        DescricaoDose = documentoImportado.VacinaDescricaoDose,
+                        FabricanteId = fabricante.Id,
+                        Lote = documentoImportado.VacinaLote,
+                        VacinaCodigo = documentoImportado.VacinaCodigo
+                    };
+                    lock (documentosVacinacoes)
+                    {
+                        documentosVacinacoes.Add(documentoVacinacao);
+                    }
+                });
 
-            while (!consultaConcluida)
-            {
-                Thread.Sleep(50);
+                _pacienteRepositorio.AdicionarConjunto(pacientesCadastrados.ToList());
+                _documentoVacinacaoRepositorio.AdicionarConjunto(documentosVacinacoes.ToList());
+                _estabelecimentoRepositorio.AdicionarConjunto(estabelecimentosAdicionados.ToList());
+                _categoriaRepositorio.AdicionarConjunto(categoriasAdicionadas.ToList());
+                _fabricanteRepositorio.AdicionarConjunto(fabricantesCadastrados.ToList());
+                _grupoAtendimentoRepositorio.AdicionarConjunto(grupoAtendimentosCadastrados.ToList());
+                _sistemaRepositorio.AdicionarConjunto(sistemasCadastrados.ToList());
+                transaction.Commit();
             }
-
-            int contador = 0;
-
-            enderecosAdicionadas = _enderecoRepositorio.ObterTodos().ToList();
-
-            foreach (var documentoImportado in documentosImportados)
+            catch (Exception ex)
             {
-                var sexoId = ObterSexoBiologico(documentoImportado.PacienteEnumSexoBiologico);
-
-                var endereco = enderecosAdicionadas.Single(p => p.CEP == documentoImportado.PacienteEnderecoCEP);
-
-                var nacionalidadeId = 0;
-                if (documentoImportado.PacienteNacionalidadeEnumNacionalidade == "B")
-                {
-                    nacionalidadeId = 1;
-                }
-                else
-                {
-                    nacionalidadeId = 2;
-                }
-
-                var pacienteJaCadastrado = pacientesCadastrados.Where(p => p.Guid == documentoImportado.PacienteId);
-                Paciente paciente;
-                if (pacienteJaCadastrado.Any())
-                {
-                    paciente = pacienteJaCadastrado.Single();
-                }
-                else
-                {
-                    paciente = CadastrarERetornarPaciente(documentoImportado, sexoId, endereco, nacionalidadeId);
-                }
-
-                //var estabelecimentoJaCadastrado = estabelecimentosAdicionadas.Where(p => p.NomeFantasia == documento.EstabelecimentoNoFantasia);
-                //Estabelecimento estabelecimento;
-                //if (estabelecimentoJaCadastrado.Any())
-                //{
-                //    estabelecimento = estabelecimentoJaCadastrado.Single();
-                //}
-                //else
-                //{
-                //    estabelecimento = CadastrarERetornarEstabelecimento(documento, municipio);
-                //}
-
-                //var categoriaJaCadastrado = categoriasAdicionadas.Where(p => p.Id == documento.VacinaCategoriaCodigo);
-                //Categoria categoria;
-                //if (categoriaJaCadastrado.Any())
-                //{
-                //    categoria = categoriaJaCadastrado.Single();
-                //}
-                //else
-                //{
-                //    categoria = CadastrarERetornarCategoria(documento);
-                //}
-
-                //var fabricanteJaCadastrado = fabricantesCadastrados.Where(p => p.Nome == documento.VacinaFabricanteNome);
-                //Fabricante fabricante;
-                //if (fabricanteJaCadastrado.Any())
-                //{
-                //    fabricante = fabricanteJaCadastrado.Single();
-                //}
-                //else
-                //{
-                //    fabricante = CadastrarERetornarFabricante(documento);
-                //}
-
-                //var grupoAtendimentoJaCadastrado = grupoAtendimentosCadastrados.Where(p => p.Id == documento.VacinaGrupoAtendimentoCodigo);
-                //GrupoAtendimento grupoAtendimento;
-                //if (grupoAtendimentoJaCadastrado.Any())
-                //{
-                //    grupoAtendimento = grupoAtendimentoJaCadastrado.Single();
-                //}
-                //else
-                //{
-                //    grupoAtendimento = CadastrarERetornarGrupoAtendimento(documento);
-                //}
-
-                //var SistemaJaCadastrado = sistemasCadastrados.Where(p => p.Nome == documento.SistemaOrigem);
-                //Sistema sistema;
-                //if (SistemaJaCadastrado.Any())
-                //{
-                //    sistema = SistemaJaCadastrado.Single();
-                //}
-                //else
-                //{
-                //    sistema = CadastrarERetornarSistema(documento);
-                //}
-
-                //DocumentoVacinacao documentoVacinacao = new DocumentoVacinacao()
-                //{
-                //    Guid = documento.DocumentId,
-                //    PacienteId = paciente.Id,
-                //    EstabelecimentoId = estabelecimento.Id,
-                //    SistemaOrigemId = sistema.Id,
-                //    Nome = documento.VacinaNome,
-                //    GrupoAtendimentoId = grupoAtendimento.Id,
-                //    CategoriaId = categoria.Id,
-                //    DataAplicacao = DateTime.SpecifyKind(documento.VacinaDataAplicacao, DateTimeKind.Utc),
-                //    DescricaoDose = documento.VacinaDescricaoDose,
-                //    FabricanteId = fabricante.Id,
-                //    Lote = documento.VacinaLote,
-                //    VacinaCodigo = documento.VacinaCodigo
-                //};
-
-                //documenetVacinacaos.Add(documentoVacinacao);
-                //contador++;
+                transaction.Rollback();
+                Console.WriteLine("Erro ao converter dados: " + ex.Message);
+                throw;
             }
-            _pacienteRepositorio.AdicionarConjunto(pacientesCadastrados);
-            //_estabelecimentoRepositorio.AdicionarConjunto(estabelecimentosAdicionadas);
-            //_categoriaRepositorio.AdicionarConjunto(categoriasAdicionadas);
-            //_fabricanteRepositorio.AdicionarConjunto(fabricantesCadastrados);
-            //_grupoAtendimentoRepositorio.AdicionarConjunto(grupoAtendimentosCadastrados);
-            //_sistemaRepositorio.AdicionarConjunto(sistemasCadastrados);
-            //_documentoVacinacaoRepositorio.AdicionarConjunto(documenetVacinacaos);
         }
 
         private int ObterSexoBiologico(string EnumSexo)
@@ -198,106 +138,36 @@ namespace SergipeVac.Conversores
             return sexoId;
         }
 
-        private Sistema CadastrarERetornarSistema(DocumentoImportado documento)
+        private Endereco ObterEndereco(string cep)
         {
-            var sistema = new Sistema()
+            var endereco = enderecosAdicionados.FirstOrDefault(e => e.CEP == cep);
+            if (endereco == null)
             {
-                Id = _sistemaId,
-                Nome = documento.SistemaOrigem
-            };
-
-
-            //_sistemaRepositorio.Adicionar(sistema);
-
-            //var sistemaAdicionado = _sistemaRepositorio.Obter(s => s.Nome == documento.SistemaOrigem).SingleOrDefault();
-
-            //if (sistemaAdicionado != null)
-            //{
-            //    sistema.Id = sistemaAdicionado.Id;
-            //}
-
-            _sistemaId++;
-            sistemasCadastrados.Add(sistema);
-
-            return sistema;
+                endereco = CadastrarERetornarEndereco(cep);
+            }
+            return endereco;
         }
 
-        private GrupoAtendimento CadastrarERetornarGrupoAtendimento(DocumentoImportado documento)
+        private Endereco CadastrarERetornarEndereco(string cep)
         {
-            var grupoAtendimento = new GrupoAtendimento()
+            var endereco = new Endereco()
             {
-                Id = documento.VacinaGrupoAtendimentoCodigo,
-                Nome = documento.VacinaGrupoAtendimentoNome
+                Id = _idEndereco,
+                CEP = cep
             };
-
-            grupoAtendimentosCadastrados.Add(grupoAtendimento);
-            //_grupoAtendimentoRepositorio.Adicionar(grupoAtendimento);
-
-            return grupoAtendimento;
+            _idEndereco++;
+            enderecosAdicionados.Add(endereco);
+            return endereco;
         }
 
-        private Fabricante CadastrarERetornarFabricante(DocumentoImportado documento)
+        private Paciente ObterPaciente(DocumentoImportado documentoImportado, int sexoId, Endereco endereco, int nacionalidadeId)
         {
-            var fabricante = new Fabricante()
+            var paciente = pacientesCadastrados.FirstOrDefault(p => p.Guid == documentoImportado.PacienteId);
+            if (paciente == null)
             {
-                Id = _idFabricante,
-                Nome = documento.VacinaFabricanteNome,
-                Referencia = documento.VacinaFabricanteReferencia
-            };
-
-            _idFabricante++;
-
-            fabricantesCadastrados.Add(fabricante);
-
-            //_fabricanteRepositorio.Adicionar(fabricante);
-            //var fabricanteAdicionado = _fabricanteRepositorio.Obter(s => s.Nome == documento.VacinaFabricanteNome).SingleOrDefault();
-
-            //if (fabricanteAdicionado != null)
-            //{
-            //    fabricante.Id = fabricanteAdicionado.Id;
-            //}
-
-            return fabricante;
-        }
-
-        private Categoria CadastrarERetornarCategoria(DocumentoImportado documento)
-        {
-
-            var categoria = new Categoria()
-            {
-                Id = documento.VacinaCategoriaCodigo,
-                Nome = documento.VacinaCategoriaNome
-            };
-
-            categoriasAdicionadas.Add(categoria);
-
-            //_categoriaRepositorio.Adicionar(categoria);
-
-            return categoria;
-
-        }
-
-        private Estabelecimento CadastrarERetornarEstabelecimento(DocumentoImportado documento, Municipio municipio)
-        {
-
-            var estabelecimento = new Estabelecimento()
-            {
-                Id = _idEstabelecimento,
-                MunicipioId = municipio.Id,
-                NomeFantasia = documento.EstabelecimentoNoFantasia,
-                RazaoSocial = documento.EstabelecimentoRazaoSocial,
-                Valor = documento.EstabelecimentoValor
-            };
-
-            _idEstabelecimento++;
-            //_estabelecimentoRepositorio.Adicionar(estabelecimento);
-
-            estabelecimentosAdicionadas.Add(estabelecimento);
-
-            //var estabelecimentoCadastrado = _estabelecimentoRepositorio.Obter(p => p.NomeFantasia == estabelecimento.NomeFantasia).SingleOrDefault();
-
-            return estabelecimento;
-
+                paciente = CadastrarERetornarPaciente(documentoImportado, sexoId, endereco, nacionalidadeId);
+            }
+            return paciente;
         }
 
         private Paciente CadastrarERetornarPaciente(DocumentoImportado documento, int sexoId, Endereco endereco, int nacionalidadeId)
@@ -313,54 +183,123 @@ namespace SergipeVac.Conversores
                 EnderecoId = endereco.Id,
                 NacionalidadeId = nacionalidadeId
             };
-
             _idPaciente++;
-
             pacientesCadastrados.Add(paciente);
-            //_pacienteRepositorio.Adicionar(paciente);
-
-            //var pacienteCadastrado = _pacienteRepositorio.Obter(p => p.Guid == documento.PacienteId).SingleOrDefault();
-
             return paciente;
         }
 
-        private Endereco CadastrarERetornarEndereco(DocumentoImportado documento, int municipio)
+        private Estabelecimento ObterEstabelecimento(DocumentoImportado documentoImportado)
         {
-
-            var endereco = new Endereco()
+            var estabelecimento = estabelecimentosAdicionados.FirstOrDefault(e => e.NomeFantasia ==
+                                                                        documentoImportado.EstabelecimentoNoFantasia);
+            if (estabelecimento == null)
             {
-                Id = _idEndereco,
-                MunicipioId = municipio,
-                CEP = documento.PacienteEnderecoCEP
-            };
-
-            _idEndereco++;
-            enderecosAdicionadas.Add(endereco);
-            //_enderecoRepositorio.Adicionar(endereco);
-
-            //return _enderecoRepositorio.Obter(p => p.CEP == documento.PacienteEnderecoCEP).SingleOrDefault();
-
-            return endereco;
+                estabelecimento = CadastrarERetornarEstabelecimento(documentoImportado);
+            }
+            return estabelecimento;
         }
 
-        private Municipio CadastrarERetornarMunicipio(DocumentoImportado documento, int pais)
+        private Estabelecimento CadastrarERetornarEstabelecimento(DocumentoImportado documento)
         {
-
-            var municipio = new Municipio()
+            var idMunicipioAracaju = 1;
+            var estabelecimento = new Estabelecimento()
             {
-                Id = _idMunicipio,
-                CodigoIBGE = documento.PacienteEnderecoCoibgeMunicipio,
-                Nome = documento.PacienteEnderecoNmMunicipio,
-                UF = documento.PacienteEnderecoUF,
-                PaisId = pais
+                Id = _idEstabelecimento,
+                MunicipioId = idMunicipioAracaju,
+                NomeFantasia = documento.EstabelecimentoNoFantasia,
+                RazaoSocial = documento.EstabelecimentoRazaoSocial,
+                Valor = documento.EstabelecimentoValor
             };
+            _idEstabelecimento++;
+            estabelecimentosAdicionados.Add(estabelecimento);
+            return estabelecimento;
+        }
 
-            _idMunicipio++;
-            municipiosAdicionadas.Add(municipio);
-            //_municipioRepositorio.Adicionar(municipio);
+        private Categoria ObterCategoria(DocumentoImportado documentoImportado)
+        {
+            var categoria = categoriasAdicionadas.FirstOrDefault(c => c.Id == documentoImportado.VacinaCategoriaCodigo);
+            if (categoria == null)
+            {
+                categoria = CadastrarERetornarCategoria(documentoImportado);
+            }
+            return categoria;
+        }
 
-            //return _municipioRepositorio.Obter(p => p.CodigoIBGE == municipio.CodigoIBGE).SingleOrDefault();
-            return municipio;
+        private Categoria CadastrarERetornarCategoria(DocumentoImportado documento)
+        {
+            var categoria = new Categoria()
+            {
+                Id = documento.VacinaCategoriaCodigo,
+                Nome = documento.VacinaCategoriaNome
+            };
+            categoriasAdicionadas.Add(categoria);
+            return categoria;
+        }
+        private Fabricante ObterFabricante(DocumentoImportado documentoImportado)
+        {
+            var fabricante = fabricantesCadastrados.FirstOrDefault(f => f.Nome == documentoImportado.VacinaFabricanteNome);
+            if (fabricante == null)
+            {
+                fabricante = CadastrarERetornarFabricante(documentoImportado);
+            }
+            return fabricante;
+        }
+
+        private Fabricante CadastrarERetornarFabricante(DocumentoImportado documento)
+        {
+            var fabricante = new Fabricante()
+            {
+                Id = _idFabricante,
+                Nome = documento.VacinaFabricanteNome,
+                Referencia = documento.VacinaFabricanteReferencia
+            };
+            _idFabricante++;
+            fabricantesCadastrados.Add(fabricante);
+            return fabricante;
+        }
+
+        private Sistema ObterSistema(DocumentoImportado documentoImportado)
+        {
+            var sistema = sistemasCadastrados.FirstOrDefault(s => s.Nome == documentoImportado.SistemaOrigem);
+            if (sistema == null)
+            {
+                sistema = CadastrarERetornarSistema(documentoImportado);
+            }
+            return sistema;
+        }
+
+        private Sistema CadastrarERetornarSistema(DocumentoImportado documento)
+        {
+            var sistema = new Sistema()
+            {
+                Id = _sistemaId,
+                Nome = documento.SistemaOrigem
+            };
+            _sistemaId++;
+            sistemasCadastrados.Add(sistema);
+            return sistema;
+        }
+
+        private GrupoAtendimento ObterGrupoAtendimento(DocumentoImportado documentoImportado)
+        {
+            var grupoAtendimento = grupoAtendimentosCadastrados.FirstOrDefault(g => g.Id == documentoImportado.VacinaGrupoAtendimentoCodigo);
+            if (grupoAtendimento == null)
+            {
+                grupoAtendimento = CadastrarERetornarGrupoAtendimento(documentoImportado);
+            }
+            return grupoAtendimento;
+        }
+
+        private GrupoAtendimento CadastrarERetornarGrupoAtendimento(DocumentoImportado documento)
+        {
+            var grupoAtendimento = new GrupoAtendimento()
+            {
+                Id = documento.VacinaGrupoAtendimentoCodigo,
+                Nome = documento.VacinaGrupoAtendimentoNome
+            };
+            grupoAtendimentosCadastrados.Add(grupoAtendimento);
+
+            return grupoAtendimento;
         }
     }
 }

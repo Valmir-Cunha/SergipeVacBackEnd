@@ -7,18 +7,16 @@ using SergipeVac.Model.Interface;
 using SergipeVac.Servicos;
 using SergipeVac;
 using Microsoft.IdentityModel.Tokens;
+using SergipeVac.Conversores;
 
 var builder = WebApplication.CreateBuilder(args);
-
-// Add services to the container.
 
 builder.Services.AddScoped(typeof(IRepositorio<>), typeof(Repositorio<>));
 builder.Services.AddScoped(typeof(RepositorioSincronizacao));
 builder.Services.AddScoped(typeof(IServicoToken), typeof(ServicoToken));
 builder.Services.AddScoped(typeof(ServicoUsuario));
-builder.Services.AddHttpClient<ServicoSincronizacao>();
+builder.Services.AddScoped(typeof(ConversorDados));
 builder.Services.AddScoped(typeof(ServicoSincronizacao));
-
 
 builder.Services.AddControllers();
 
@@ -63,8 +61,7 @@ var strBuilder = new NpgsqlConnectionStringBuilder()
     Database = "SergipeVac"
 };
 
-builder.Services.AddEntityFrameworkNpgsql().AddDbContext<Contexto>(options =>
-options.UseNpgsql(strBuilder.ConnectionString));
+builder.Services.AddEntityFrameworkNpgsql().AddDbContext<Contexto>(options => options.UseNpgsql(strBuilder.ConnectionString));
 
 using (var serviceProvider = builder.Services.BuildServiceProvider())
 {
