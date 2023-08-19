@@ -2,23 +2,29 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using SergipeVac.Infra;
+using SergipeVac;
+using Microsoft.IdentityModel.Tokens;
+using Hangfire;
+using Hangfire.PostgreSql;
+using SergipeVac.Conversores;
 using SergipeVac.Infra.Repositorios;
 using SergipeVac.Model.Interface;
 using SergipeVac.Servicos;
-using SergipeVac;
-using Microsoft.IdentityModel.Tokens;
-using SergipeVac.Conversores;
-using Hangfire;
-using Hangfire.PostgreSql;
+using System.ComponentModel.Design;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScoped(typeof(IRepositorio<>), typeof(Repositorio<>));
+builder.Services.AddScoped(typeof(IRepositorioPaciente), typeof(RepositorioPaciente));
 builder.Services.AddScoped(typeof(RepositorioSincronizacao));
 builder.Services.AddScoped(typeof(IServicoToken), typeof(ServicoToken));
 builder.Services.AddScoped(typeof(ServicoUsuario));
-builder.Services.AddScoped(typeof(ConversorDados));
+builder.Services.AddScoped<Lazy<ConversorDados>>();
+builder.Services.AddScoped<Lazy<RepositorioSincronizacao>>();
+builder.Services.AddScoped<ConversorDados>();
 builder.Services.AddScoped(typeof(ServicoSincronizacao));
+builder.Services.AddScoped(typeof(IServiceProvider), typeof(ServiceContainer));
+
 
 builder.Services.AddControllers();
 
@@ -45,25 +51,26 @@ builder.Services.AddSwaggerGen();
 
 var strBuilder = new NpgsqlConnectionStringBuilder()
 {
-    Port = 5432,
-    Host = "database-1.cievgxafnjws.us-east-1.rds.amazonaws.com",
-    Username = "postgres",
-    Password = "daL2n7nCHI92qGPHjfBw",
-    Database = "postgres"
+    //Port = 5432,
+    //Host = "database-1.cievgxafnjws.us-east-1.rds.amazonaws.com",
+    //Username = "postgres",
+    //Password = "daL2n7nCHI92qGPHjfBw",
+    //Database = "postgres"
+
     //Port = 5432,
     //Host = "100.68.8.49",
     //Username = "postgres",
     //Password = "postgres",
     //Database = "postgres"
 
-    //Port = 5432,
-    //Host = "localhost",
-    //Username = "postgres",
-    //Password = "vinicius11",
-    //Database = "SergipeVac"
+    Port = 5432,
+    Host = "localhost",
+    Username = "postgres",
+    Password = "vinicius11",
+    Database = "SergipeVac"
 };
 
-builder.Services.AddEntityFrameworkNpgsql().AddDbContext<Contexto>(options => options.UseNpgsql(strBuilder.ConnectionString));
+builder.Services.AddEntityFrameworkNpgsql().AddDbContext<Contexto>(options => options.UseNpgsql(strBuilder.ConnectionString).EnableSensitiveDataLogging());
 builder.Services.AddHangfire(op => op.UsePostgreSqlStorage(strBuilder.ConnectionString));
 builder.Services.AddHangfireServer();
 

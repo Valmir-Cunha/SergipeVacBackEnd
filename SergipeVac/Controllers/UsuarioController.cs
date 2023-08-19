@@ -10,7 +10,7 @@ namespace SergipeVac.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize]
+    //[Authorize]
     public class UsuarioController : Controller
     {
         private readonly IRepositorio<Usuario> _repositorioUsuario;
@@ -59,8 +59,8 @@ namespace SergipeVac.Controllers
             return Task.FromResult<IActionResult>(Ok("Usuário cadastrado com sucesso!"));
         }
 
-        [HttpPut("editar/{codigo}")]
-        public void Editar(int codigo)
+        [HttpPut("editar")]
+        public void Editar()
         {
             _servicoSincronizacao.SincronizarDados();
         }

@@ -12,19 +12,21 @@ namespace SergipeVac.Servicos
     {
         private readonly int _totalDeResgistrosPorRequisicao = 10000;
         private List<DocumentoImportado> ListaDocumentosImportados { get; set; }
-        private RepositorioSincronizacao RepositorioSincronizacao { get; set; }
-        private ConversorDados ConversorDados { get; set; }
+        private Lazy<RepositorioSincronizacao> RepositorioSincronizacaoLazy { get; set; }
+        private Lazy<ConversorDados> ConversorDadosLazy { get; set; }
 
         private DateTime _inicioSincronizacao;
 
-
-        public ServicoSincronizacao(RepositorioSincronizacao repositorioSincronizacao, ConversorDados conversorDados)
+        public ServicoSincronizacao(Lazy<RepositorioSincronizacao> repositorioSincronizacaoLazy, Lazy<ConversorDados> conversorDadosLazy)
         {
-            RepositorioSincronizacao = repositorioSincronizacao;
-            ConversorDados = conversorDados;
+            RepositorioSincronizacaoLazy = repositorioSincronizacaoLazy;
+            ConversorDadosLazy = conversorDadosLazy;
             ListaDocumentosImportados = new List<DocumentoImportado>();
             _inicioSincronizacao = DateTime.UtcNow;
         }
+
+        private ConversorDados ConversorDados => ConversorDadosLazy.Value;
+        private RepositorioSincronizacao RepositorioSincronizacao => RepositorioSincronizacaoLazy.Value;
 
         public void SincronizarDados()
         {
@@ -52,7 +54,6 @@ namespace SergipeVac.Servicos
                     {
                         var scroll = jsonResposta["_scroll_id"];
                         ObterRegistrosComScroll(scroll, dadosVacinacaoJSON, totalDeRegistros);
-                        Console.WriteLine(totalDeRegistros);
                     }
                     else
                     {
@@ -94,8 +95,7 @@ namespace SergipeVac.Servicos
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Erro na requisição: " + ex.Message);
-                return null;
+                throw new Exception(ex.Message);
             }
         }
 

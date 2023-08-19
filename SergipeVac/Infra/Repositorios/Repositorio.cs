@@ -24,6 +24,8 @@ namespace SergipeVac.Infra.Repositorios
             _contexto.SaveChanges();
         }
 
+
+
         public void Atualizar(T entidade)
         {
             _contexto.Update(entidade);

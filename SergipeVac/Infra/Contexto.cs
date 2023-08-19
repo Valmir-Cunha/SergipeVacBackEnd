@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using SergipeVac.Model.Autenticacao;
 using SergipeVac.Model.Localizacao;
 using SergipeVac.Model.ModeloDados;
@@ -87,6 +88,8 @@ namespace SergipeVac.Infra
 
             modelBuilder.Entity<Paciente>(entity =>
             {
+                entity.HasKey(c => c.Id);
+
                 entity.HasOne(c => c.SexoBiologico)
                       .WithMany()
                       .HasForeignKey(c => c.SexoBiologicoId);
@@ -124,6 +127,11 @@ namespace SergipeVac.Infra
                 entity.HasIndex(p => p.Cidade);
                 entity.HasIndex(p => p.Estado);
 
+            });
+
+            modelBuilder.Entity<DadosSincronizacao>(entity =>
+            {
+                entity.HasKey(p => p.Id);
             });
         }
     }

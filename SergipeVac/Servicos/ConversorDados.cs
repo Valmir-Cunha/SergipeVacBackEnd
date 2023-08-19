@@ -15,7 +15,7 @@ namespace SergipeVac.Conversores
         private IRepositorio<Estabelecimento> _estabelecimentoRepositorio;
         private IRepositorio<Fabricante> _fabricanteRepositorio;
         private IRepositorio<GrupoAtendimento> _grupoAtendimentoRepositorio;
-        private IRepositorio<Paciente> _pacienteRepositorio;
+        private IRepositorioPaciente _pacienteRepositorio;
         private IRepositorio<Sistema> _sistemaRepositorio;
         private IServiceProvider _serviceProvider;
 
@@ -32,6 +32,14 @@ namespace SergipeVac.Conversores
         ConcurrentBag<Categoria> categoriasAdicionadas = new();
         ConcurrentBag<Estabelecimento> estabelecimentosAdicionados = new();
         ConcurrentBag<Endereco> enderecosAdicionados = new();
+
+        List<Paciente> pacientesCadastradosBanco = new();
+        List<Sistema> sistemasCadastradosBanco = new();
+        List<GrupoAtendimento> grupoAtendimentosCadastradosBanco = new();
+        List<Fabricante> fabricantesCadastradosBanco = new();
+        List<Categoria> categoriasAdicionadasBanco = new();
+        List<Estabelecimento> estabelecimentosAdicionadosBanco = new();
+        List<Endereco> enderecosAdicionadosBanco = new();
         //List<DocumentoVacinacao> documentosVacinacoes = new();
 
         public ConversorDados(IRepositorio<DocumentoImportado> documentoImportadoRepositorio,
@@ -41,7 +49,7 @@ namespace SergipeVac.Conversores
                               IRepositorio<Estabelecimento> estabelecimentoRepositorio,
                               IRepositorio<Fabricante> fabricanteRepositorio,
                               IRepositorio<GrupoAtendimento> grupoAtendimentoRepositorio,
-                              IRepositorio<Paciente> pacienteRepositorio,
+                              IRepositorioPaciente pacienteRepositorio,
                               IRepositorio<Sistema> sistemaRepositorio,
                               IServiceProvider serviceProvider)
         {
@@ -69,11 +77,28 @@ namespace SergipeVac.Conversores
 
         public void ConverterDocumentoImportadoParaDocumentosVacinacao(List<DocumentoImportado> documentosImportados)
         {
-            _serviceProvider = new ServiceContainer();
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<Contexto>();
 
             using var transaction = dbContext.Database.BeginTransaction();
+
+            _categoriaRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Categoria>>();
+            _documentoVacinacaoRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<DocumentoVacinacao>>();
+            _enderecoRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Endereco>>();
+            _estabelecimentoRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Estabelecimento>>();
+            _fabricanteRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Fabricante>>();
+            _grupoAtendimentoRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<GrupoAtendimento>>();
+            _pacienteRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorioPaciente>();
+            _sistemaRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Sistema>>();
+            _documentoImportadoRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<DocumentoImportado>>();
+
+            pacientesCadastradosBanco = _pacienteRepositorio.ObterTodos().ToList();
+            sistemasCadastradosBanco = _sistemaRepositorio.ObterTodos().ToList();
+            grupoAtendimentosCadastradosBanco = _grupoAtendimentoRepositorio.ObterTodos().ToList();
+            fabricantesCadastradosBanco = _fabricanteRepositorio.ObterTodos().ToList();
+            categoriasAdicionadasBanco = _categoriaRepositorio.ObterTodos().ToList();
+            estabelecimentosAdicionadosBanco = _estabelecimentoRepositorio.ObterTodos().ToList();
+            enderecosAdicionadosBanco = _enderecoRepositorio.ObterTodos().ToList();
 
             try
             {
@@ -111,16 +136,6 @@ namespace SergipeVac.Conversores
                     }
                 });
 
-                _categoriaRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Categoria>>();
-                _documentoVacinacaoRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<DocumentoVacinacao>>();
-                _enderecoRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Endereco>>();
-                _estabelecimentoRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Estabelecimento>>();
-                _fabricanteRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Fabricante>>();
-                _grupoAtendimentoRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<GrupoAtendimento>>();
-                _pacienteRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Paciente>>();
-                _sistemaRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Sistema>>();
-                _documentoImportadoRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<DocumentoImportado>>();
-
                 _pacienteRepositorio.AdicionarConjunto(pacientesCadastrados.ToList());
                 _documentoVacinacaoRepositorio.AdicionarConjunto(documentosVacinacoes.ToList());
                 _estabelecimentoRepositorio.AdicionarConjunto(estabelecimentosAdicionados.ToList());
@@ -152,10 +167,16 @@ namespace SergipeVac.Conversores
 
         private Endereco ObterEndereco(string cep)
         {
-            var endereco = enderecosAdicionados.FirstOrDefault(e => e.CEP == cep);
-            if (endereco == null)
+            Endereco endereco;
+            var enderecoLista = enderecosAdicionados.FirstOrDefault(e => e.CEP == cep);
+            var enderecoBanco = enderecosAdicionadosBanco.FirstOrDefault(e => e.CEP == cep);
+            if (enderecoLista == null && enderecoBanco == null)
             {
                 endereco = CadastrarERetornarEndereco(cep);
+            }
+            else
+            {
+                endereco = enderecoLista ?? enderecoBanco;
             }
             return endereco;
         }
@@ -174,10 +195,16 @@ namespace SergipeVac.Conversores
 
         private Paciente ObterPaciente(DocumentoImportado documentoImportado, int sexoId, Endereco endereco, int nacionalidadeId)
         {
-            var paciente = pacientesCadastrados.FirstOrDefault(p => p.Guid == documentoImportado.PacienteId);
-            if (paciente == null)
+            Paciente paciente;
+            var pacienteLista = pacientesCadastrados.FirstOrDefault(p => p.Guid == documentoImportado.PacienteId);
+            var pacienteBanco = pacientesCadastradosBanco.FirstOrDefault(p => p.Guid == documentoImportado.PacienteId);
+            if (pacienteLista == null && pacienteBanco == null)
             {
                 paciente = CadastrarERetornarPaciente(documentoImportado, sexoId, endereco, nacionalidadeId);
+            }
+            else
+            {
+                paciente = pacienteBanco ?? pacienteLista;
             }
             return paciente;
         }
@@ -202,12 +229,21 @@ namespace SergipeVac.Conversores
 
         private Estabelecimento ObterEstabelecimento(DocumentoImportado documentoImportado)
         {
-            var estabelecimento = estabelecimentosAdicionados.FirstOrDefault(e => e.NomeFantasia ==
-                                                                        documentoImportado.EstabelecimentoNoFantasia);
-            if (estabelecimento == null)
+            Estabelecimento estabelecimento;
+            var estabelecimentoLista = estabelecimentosAdicionados.FirstOrDefault(e => e.NomeFantasia == 
+                                                                                            documentoImportado.EstabelecimentoNoFantasia);
+            var estabelecimentoBanco = estabelecimentosAdicionadosBanco.FirstOrDefault(e => e.NomeFantasia ==
+                                                                                            documentoImportado.EstabelecimentoNoFantasia);
+
+            if (estabelecimentoBanco == null && estabelecimentoLista == null)
             {
                 estabelecimento = CadastrarERetornarEstabelecimento(documentoImportado);
             }
+            else
+            {
+                estabelecimento = estabelecimentoLista ?? estabelecimentoBanco;
+            }
+
             return estabelecimento;
         }
 
@@ -229,10 +265,16 @@ namespace SergipeVac.Conversores
 
         private Categoria ObterCategoria(DocumentoImportado documentoImportado)
         {
-            var categoria = categoriasAdicionadas.FirstOrDefault(c => c.Id == documentoImportado.VacinaCategoriaCodigo);
-            if (categoria == null)
+            Categoria categoria;
+            var categoriaLista = categoriasAdicionadas.FirstOrDefault(c => c.Id == documentoImportado.VacinaCategoriaCodigo);
+            var categoriaBanco = categoriasAdicionadasBanco.FirstOrDefault(c => c.Id == documentoImportado.VacinaCategoriaCodigo);
+            if (categoriaLista == null && categoriaBanco == null)
             {
                 categoria = CadastrarERetornarCategoria(documentoImportado);
+            }
+            else
+            {
+                categoria = categoriaBanco ?? categoriaLista;
             }
             return categoria;
         }
@@ -249,10 +291,16 @@ namespace SergipeVac.Conversores
         }
         private Fabricante ObterFabricante(DocumentoImportado documentoImportado)
         {
-            var fabricante = fabricantesCadastrados.FirstOrDefault(f => f.Nome == documentoImportado.VacinaFabricanteNome);
-            if (fabricante == null)
+            Fabricante fabricante;
+            var fabricanteLista = fabricantesCadastrados.FirstOrDefault(f => f.Nome == documentoImportado.VacinaFabricanteNome);
+            var fabricanteBanco = fabricantesCadastradosBanco.FirstOrDefault(f => f.Nome == documentoImportado.VacinaFabricanteNome);
+            if (fabricanteLista == null && fabricanteBanco == null)
             {
                 fabricante = CadastrarERetornarFabricante(documentoImportado);
+            }
+            else
+            {
+                fabricante = fabricanteLista ?? fabricanteBanco;
             }
             return fabricante;
         }
@@ -272,10 +320,17 @@ namespace SergipeVac.Conversores
 
         private Sistema ObterSistema(DocumentoImportado documentoImportado)
         {
-            var sistema = sistemasCadastrados.FirstOrDefault(s => s.Nome == documentoImportado.SistemaOrigem);
-            if (sistema == null)
+            Sistema sistema;
+            var sistemaLista = sistemasCadastrados.FirstOrDefault(s => s.Nome == documentoImportado.SistemaOrigem);
+            var sistemaBanco = sistemasCadastradosBanco.FirstOrDefault(s => s.Nome == documentoImportado.SistemaOrigem);
+
+            if (sistemaLista == null && sistemaBanco == null)
             {
                 sistema = CadastrarERetornarSistema(documentoImportado);
+            }
+            else
+            {
+                sistema = sistemaLista ?? sistemaBanco;
             }
             return sistema;
         }
@@ -294,10 +349,16 @@ namespace SergipeVac.Conversores
 
         private GrupoAtendimento ObterGrupoAtendimento(DocumentoImportado documentoImportado)
         {
-            var grupoAtendimento = grupoAtendimentosCadastrados.FirstOrDefault(g => g.Id == documentoImportado.VacinaGrupoAtendimentoCodigo);
-            if (grupoAtendimento == null)
+            GrupoAtendimento grupoAtendimento;
+            var grupoAtendimentoLista = grupoAtendimentosCadastrados.FirstOrDefault(g => g.Id == documentoImportado.VacinaGrupoAtendimentoCodigo);            
+            var grupoAtendimentoBanco = grupoAtendimentosCadastradosBanco.FirstOrDefault(g => g.Id == documentoImportado.VacinaGrupoAtendimentoCodigo);
+            if (grupoAtendimentoLista == null && grupoAtendimentoBanco == null)
             {
                 grupoAtendimento = CadastrarERetornarGrupoAtendimento(documentoImportado);
+            }
+            else
+            {
+                grupoAtendimento = grupoAtendimentoLista ?? grupoAtendimentoBanco;
             }
             return grupoAtendimento;
         }
