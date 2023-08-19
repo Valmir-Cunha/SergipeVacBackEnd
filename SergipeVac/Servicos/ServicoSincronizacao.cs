@@ -23,21 +23,21 @@ namespace SergipeVac.Servicos
             RepositorioSincronizacao = repositorioSincronizacao;
             ConversorDados = conversorDados;
             ListaDocumentosImportados = new List<DocumentoImportado>();
-            _inicioSincronizacao = DateTime.Now;
+            _inicioSincronizacao = DateTime.UtcNow;
         }
 
-        public async Task SincronizarDadosAsync()
+        public void SincronizarDados()
         {
-            await ObterDadosASincronizarAsync();
+            ObterDadosASincronizar();
         }
 
-        private async Task ObterDadosASincronizarAsync()
+        private void ObterDadosASincronizar()
         {
             try
             {
                 var bodyRequisicao = ObterDadosAPartirDaUltimaSincronizacao();
 
-                RestResponse respostaRequisicao = await RealizarRequisicaoUltimosRegistrosAsync(bodyRequisicao, "/_search?scroll=1m");
+                RestResponse respostaRequisicao = RealizarRequisicaoUltimosRegistrosAsync(bodyRequisicao, "/_search?scroll=1m");
 
                 if (respostaRequisicao.StatusCode == System.Net.HttpStatusCode.OK)
                 {
@@ -51,7 +51,7 @@ namespace SergipeVac.Servicos
                     if (totalDeRegistros != null && (int) totalDeRegistros > _totalDeResgistrosPorRequisicao)
                     {
                         var scroll = jsonResposta["_scroll_id"];
-                        await ObterRegistrosComScroll(scroll, dadosVacinacaoJSON, totalDeRegistros);
+                        ObterRegistrosComScroll(scroll, dadosVacinacaoJSON, totalDeRegistros);
                         Console.WriteLine(totalDeRegistros);
                     }
                     else
@@ -64,16 +64,17 @@ namespace SergipeVac.Servicos
                 }
                 else
                 {
-                    Console.WriteLine("Erro na requisição: " + respostaRequisicao.ErrorMessage);
+                    throw new Exception(respostaRequisicao.ErrorMessage);
                 }
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Erro: " + ex.Message);
+                Console.WriteLine("Erro na sicronização: " + ex.Message);
+                SalvarSincronizacaoFalha();
             }
         }
 
-        private async Task<RestResponse> RealizarRequisicaoUltimosRegistrosAsync(string bodyRequisicao, string endPoint)
+        private RestResponse RealizarRequisicaoUltimosRegistrosAsync(string bodyRequisicao, string endPoint)
         {
             try
             {
@@ -89,7 +90,7 @@ namespace SergipeVac.Servicos
 
                 requisicao.AddStringBody(bodyRequisicao, DataFormat.Json);
 
-                return await cliente.ExecuteAsync(requisicao);
+                return cliente.Execute(requisicao);
             }
             catch (Exception ex)
             {
@@ -98,7 +99,7 @@ namespace SergipeVac.Servicos
             }
         }
 
-        private async Task ObterRegistrosComScroll(JToken scrollPrimeiraReq, JToken dadosVacinacaoJSON, JToken totalRegistros)
+        private void ObterRegistrosComScroll(JToken scrollPrimeiraReq, JToken dadosVacinacaoJSON, JToken totalRegistros)
         {
             var quantidadeDeScrool = Math.Ceiling((decimal) totalRegistros / _totalDeResgistrosPorRequisicao);
             var scroll = scrollPrimeiraReq;
@@ -106,7 +107,7 @@ namespace SergipeVac.Servicos
             for (var rodada = 1; rodada <= quantidadeDeScrool; rodada++)
             {
                 ObterDocumentosImportadosJSON(dadosVacinacoes);
-                RestResponse respostaRequisicao = await ObterProximoScrollAPI(scroll);
+                RestResponse respostaRequisicao = ObterProximoScrollAPI(scroll);
                 if (respostaRequisicao.StatusCode == System.Net.HttpStatusCode.OK)
                 {
                     var jsonResposta = JsonConvert.DeserializeObject<JObject>(respostaRequisicao.Content);
@@ -132,10 +133,10 @@ namespace SergipeVac.Servicos
             }
         }
 
-        public async Task<RestResponse> ObterProximoScrollAPI(JToken scroll)
+        public RestResponse ObterProximoScrollAPI(JToken scroll)
         {
             var bodyRequisicao = ObterDadosDoProximoScroll((string) scroll);
-            RestResponse respostaRequisicao = await RealizarRequisicaoUltimosRegistrosAsync(bodyRequisicao, "/_search/scroll");
+            RestResponse respostaRequisicao = RealizarRequisicaoUltimosRegistrosAsync(bodyRequisicao, "/_search/scroll");
             return respostaRequisicao;
         }
 
@@ -267,6 +268,17 @@ namespace SergipeVac.Servicos
             {
                 BemSucedida = true,
                 QuantidadeRegistrosAdicionados = ListaDocumentosImportados.Count,
+                UltimaSincronizacao = _inicioSincronizacao,
+            };
+            RepositorioSincronizacao.Adicionar(dadosSincronizacao);
+        }
+
+        private void SalvarSincronizacaoFalha()
+        {
+            DadosSincronizacao dadosSincronizacao = new DadosSincronizacao
+            {
+                BemSucedida = false,
+                QuantidadeRegistrosAdicionados = 0,
                 UltimaSincronizacao = _inicioSincronizacao,
             };
             RepositorioSincronizacao.Adicionar(dadosSincronizacao);

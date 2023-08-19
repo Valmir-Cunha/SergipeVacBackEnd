@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using SergipeVac.Model.Interface;
 using SergipeVac.Model.Localizacao;
 
@@ -6,6 +7,8 @@ namespace SergipeVac.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
+
     public class LocalizacaoController : Controller
     {
 

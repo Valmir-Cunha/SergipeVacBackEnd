@@ -4,11 +4,13 @@ using SergipeVac.Model.Interface;
 using System.ComponentModel.DataAnnotations;
 using SergipeVac.Model.DTOs;
 using SergipeVac.Servicos;
+using Microsoft.AspNetCore.Authorization;
 
 namespace SergipeVac.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class UsuarioController : Controller
     {
         private readonly IRepositorio<Usuario> _repositorioUsuario;
@@ -60,7 +62,7 @@ namespace SergipeVac.Controllers
         [HttpPut("editar/{codigo}")]
         public void Editar(int codigo)
         {
-            _servicoSincronizacao.SincronizarDadosAsync();
+            _servicoSincronizacao.SincronizarDados();
         }
 
 

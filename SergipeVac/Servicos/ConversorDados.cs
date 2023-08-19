@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.ComponentModel.Design;
 using SergipeVac.Infra;
 using SergipeVac.Model.Interface;
 using SergipeVac.Model.ModeloDados;
@@ -7,16 +8,16 @@ namespace SergipeVac.Conversores
 {
     public class ConversorDados
     {
-        private readonly IRepositorio<DocumentoImportado> _documentoImportadoRepositorio;
-        private readonly IRepositorio<Categoria> _categoriaRepositorio;
-        private readonly IRepositorio<DocumentoVacinacao> _documentoVacinacaoRepositorio;
-        private readonly IRepositorio<Endereco> _enderecoRepositorio;
-        private readonly IRepositorio<Estabelecimento> _estabelecimentoRepositorio;
-        private readonly IRepositorio<Fabricante> _fabricanteRepositorio;
-        private readonly IRepositorio<GrupoAtendimento> _grupoAtendimentoRepositorio;
-        private readonly IRepositorio<Paciente> _pacienteRepositorio;
-        private readonly IRepositorio<Sistema> _sistemaRepositorio;
-        private readonly IServiceProvider _serviceProvider;
+        private IRepositorio<DocumentoImportado> _documentoImportadoRepositorio;
+        private IRepositorio<Categoria> _categoriaRepositorio;
+        private IRepositorio<DocumentoVacinacao> _documentoVacinacaoRepositorio;
+        private IRepositorio<Endereco> _enderecoRepositorio;
+        private IRepositorio<Estabelecimento> _estabelecimentoRepositorio;
+        private IRepositorio<Fabricante> _fabricanteRepositorio;
+        private IRepositorio<GrupoAtendimento> _grupoAtendimentoRepositorio;
+        private IRepositorio<Paciente> _pacienteRepositorio;
+        private IRepositorio<Sistema> _sistemaRepositorio;
+        private IServiceProvider _serviceProvider;
 
         int _sistemaId = 1;
         int _idPaciente = 1;
@@ -68,6 +69,7 @@ namespace SergipeVac.Conversores
 
         public void ConverterDocumentoImportadoParaDocumentosVacinacao(List<DocumentoImportado> documentosImportados)
         {
+            _serviceProvider = new ServiceContainer();
             using var scope = _serviceProvider.CreateScope();
             var dbContext = scope.ServiceProvider.GetRequiredService<Contexto>();
 
@@ -108,6 +110,16 @@ namespace SergipeVac.Conversores
                         documentosVacinacoes.Add(documentoVacinacao);
                     }
                 });
+
+                _categoriaRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Categoria>>();
+                _documentoVacinacaoRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<DocumentoVacinacao>>();
+                _enderecoRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Endereco>>();
+                _estabelecimentoRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Estabelecimento>>();
+                _fabricanteRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Fabricante>>();
+                _grupoAtendimentoRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<GrupoAtendimento>>();
+                _pacienteRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Paciente>>();
+                _sistemaRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<Sistema>>();
+                _documentoImportadoRepositorio = scope.ServiceProvider.GetRequiredService<IRepositorio<DocumentoImportado>>();
 
                 _pacienteRepositorio.AdicionarConjunto(pacientesCadastrados.ToList());
                 _documentoVacinacaoRepositorio.AdicionarConjunto(documentosVacinacoes.ToList());

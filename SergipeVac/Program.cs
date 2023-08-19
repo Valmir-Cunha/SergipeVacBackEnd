@@ -8,6 +8,8 @@ using SergipeVac.Servicos;
 using SergipeVac;
 using Microsoft.IdentityModel.Tokens;
 using SergipeVac.Conversores;
+using Hangfire;
+using Hangfire.PostgreSql;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,6 +64,9 @@ var strBuilder = new NpgsqlConnectionStringBuilder()
 };
 
 builder.Services.AddEntityFrameworkNpgsql().AddDbContext<Contexto>(options => options.UseNpgsql(strBuilder.ConnectionString));
+builder.Services.AddHangfire(op => op.UsePostgreSqlStorage(strBuilder.ConnectionString));
+builder.Services.AddHangfireServer();
+
 
 using (var serviceProvider = builder.Services.BuildServiceProvider())
 {
@@ -83,5 +88,12 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.UseHangfireDashboard();
+
+var sincronizador = new SincronizadorDeDados(app.Services);
+
+RecurringJob.AddOrUpdate("Sistema de sincronização", () => sincronizador.SincronizarDados(), Cron.Monthly, TimeZoneInfo.Local);
+//RecurringJob.AddOrUpdate("Teste", () => Console.WriteLine("Finalmente"), Cron.Minutely, TimeZoneInfo.Local);
 
 app.Run();
