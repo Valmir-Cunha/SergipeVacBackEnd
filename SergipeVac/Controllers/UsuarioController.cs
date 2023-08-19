@@ -59,11 +59,11 @@ namespace SergipeVac.Controllers
             return Task.FromResult<IActionResult>(Ok("Usuário cadastrado com sucesso!"));
         }
 
-        [HttpPut("editar")]
-        public void Editar()
-        {
-            _servicoSincronizacao.SincronizarDados();
-        }
+        //[HttpPut("editar")]
+        //public void Editar()
+        //{
+        //    _servicoSincronizacao.SincronizarDados();
+        //}
 
 
         [HttpDelete("excluir/{codigo}")]
