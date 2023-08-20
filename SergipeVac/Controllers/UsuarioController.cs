@@ -3,8 +3,6 @@ using SergipeVac.Model.Autenticacao;
 using SergipeVac.Model.Interface;
 using System.ComponentModel.DataAnnotations;
 using SergipeVac.Model.DTOs;
-using SergipeVac.Servicos;
-using Microsoft.AspNetCore.Authorization;
 
 namespace SergipeVac.Controllers
 {
@@ -14,15 +12,9 @@ namespace SergipeVac.Controllers
     public class UsuarioController : Controller
     {
         private readonly IRepositorio<Usuario> _repositorioUsuario;
-        private readonly ServicoUsuario _servicoUsario;
-        private readonly ServicoSincronizacao _servicoSincronizacao;
-        public UsuarioController(IRepositorio<Usuario> repositorioUsuario, 
-                                 ServicoUsuario servicoUsario, 
-                                 ServicoSincronizacao servicoSincronizacao)
+        public UsuarioController(IRepositorio<Usuario> repositorioUsuario)
         {
             _repositorioUsuario = repositorioUsuario;
-            _servicoUsario = servicoUsario;
-            _servicoSincronizacao = servicoSincronizacao;
         }
 
         [HttpPost("cadastrar")]
